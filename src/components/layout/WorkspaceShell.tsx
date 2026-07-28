@@ -1,9 +1,9 @@
 import React from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { LayoutDashboard, Users, Shield, Settings, LogOut, Building2 } from 'lucide-react';
+import { LayoutDashboard, LayoutGrid, Users, Shield, Settings, LogOut, Building2 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 
-type WorkspaceTab = 'dashboard' | 'people' | 'roles' | 'settings';
+type WorkspaceTab = 'dashboard' | 'apps' | 'people' | 'roles' | 'settings';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
@@ -20,7 +20,8 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
 
   const navItems = [
     { id: 'dashboard' as const, label: 'Home', icon: LayoutDashboard },
-    { id: 'people' as const, label: 'People', icon: Users },
+    { id: 'apps' as const, label: 'Workspace', icon: LayoutGrid },
+    { id: 'people' as const, label: 'Team', icon: Users },
     { id: 'roles' as const, label: 'Roles & Access', icon: Shield },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];

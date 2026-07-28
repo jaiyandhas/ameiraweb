@@ -10,6 +10,7 @@ const CreateBusinessPage = lazy(() => import('./pages/CreateBusinessPage').then(
 const WorkspaceShell = lazy(() => import('./components/layout/WorkspaceShell').then(m => ({ default: m.WorkspaceShell })));
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const WorkspacePage = lazy(() => import('./features/apps/WorkspacePage').then(m => ({ default: m.WorkspacePage })));
 const PeoplePage = lazy(() => import('./pages/PeoplePage').then(m => ({ default: m.PeoplePage })));
 const InvitePersonPage = lazy(() => import('./pages/InvitePersonPage').then(m => ({ default: m.InvitePersonPage })));
 const PersonDetailPage = lazy(() => import('./pages/PersonDetailPage').then(m => ({ default: m.PersonDetailPage })));
@@ -17,7 +18,7 @@ const RolesPage = lazy(() => import('./pages/RolesPage').then(m => ({ default: m
 const CreateRolePage = lazy(() => import('./pages/CreateRolePage').then(m => ({ default: m.CreateRolePage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
-type WorkspaceTab = 'dashboard' | 'people' | 'roles' | 'settings';
+type WorkspaceTab = 'dashboard' | 'apps' | 'people' | 'roles' | 'settings';
 
 const AppContent: React.FC = () => {
   const { activeStep, openAuth, openRegister, goBackToLanding, authInitialMode } = useWorkspace();
@@ -62,6 +63,11 @@ const AppContent: React.FC = () => {
 
       {activeStep === 'workspace' && (
         <WorkspaceShell currentTab={workspaceTab} onNavigate={handleNavigate}>
+
+          {/* Workspace (Apps) */}
+          {workspaceTab === 'apps' && (
+            <WorkspacePage onNavigate={handleNavigate} />
+          )}
 
           {/* Dashboard */}
           {workspaceTab === 'dashboard' && (

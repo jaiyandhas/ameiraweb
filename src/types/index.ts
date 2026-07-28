@@ -86,3 +86,22 @@ export interface ActivityEvent {
   title: string;       // Human-readable sentence: "Priya was invited to the team."
   timestamp: string;   // ISO 8601 string
 }
+
+// ─── Workspace App Registry ──────────────────────────────────────────────────
+// Internally called "App". In the UI, users see "Workspace" / "tools".
+// Never expose the word "module" to the user.
+
+export type AppStatus = 'installed' | 'coming_soon';
+
+export interface WorkspaceApp {
+  id: string;               // Unique stable id
+  slug: string;             // URL/code safe key: 'inventory', 'team', 'orders'
+  name: string;             // Display name shown to user
+  description: string;      // One sentence. What does this tool help the business do?
+  iconKey: string;          // Lucide icon name key — resolved in UI layer
+  status: AppStatus;
+  installed: boolean;
+  installedAt?: string;     // ISO 8601
+  navTarget?: string;       // Which WorkspaceTab to open on "Open" — future dynamic sidebar uses this
+  showInSidebar?: boolean;  // Future: sidebar renders dynamically from installed apps with this = true
+}

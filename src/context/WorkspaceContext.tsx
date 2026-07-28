@@ -6,8 +6,10 @@ import type {
   Role, 
   CapabilityId,
   ActivityEvent,
-  ActivityEventType
+  ActivityEventType,
+  WorkspaceApp
 } from '../types';
+import { APP_REGISTRY } from '../features/apps/registry';
 
 interface WorkspaceContextType {
   user: UserSession | null;
@@ -15,6 +17,7 @@ interface WorkspaceContextType {
   people: Person[];
   roles: Role[];
   activities: ActivityEvent[];
+  apps: WorkspaceApp[];
   activeStep: 'landing' | 'login' | 'verify' | 'create-business' | 'workspace';
   authInitialMode: 'login' | 'register';
   pendingContact: string;
@@ -34,6 +37,8 @@ interface WorkspaceContextType {
   updateRole: (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => void;
   deleteRole: (roleId: string) => void;
   updateBusiness: (name: string) => void;
+  installApp: (slug: string) => void;
+  uninstallApp: (slug: string) => void;
   logout: () => void;
   hasCapability: (capability: CapabilityId) => boolean;
   getRoleById: (roleId: string) => Role | undefined;
@@ -101,6 +106,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [activeStep, setActiveStep] = useState<'landing' | 'login' | 'verify' | 'create-business' | 'workspace'>('landing');
   const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [apps, setApps] = useState<WorkspaceApp[]>(APP_REGISTRY);
 
   const addActivity = (type: ActivityEventType, title: string) => {
     const event: ActivityEvent = {
@@ -281,6 +287,26 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     addActivity('settings_updated', `Business name updated to "${name}".`);
   };
 
+  const installApp = (slug: string) => {
+    setApps(prev => prev.map(a =>
+      a.slug === slug
+        ? { ...a, installed: true, status: 'installed' as const, installedAt: new Date().toISOString() }
+        : a
+    ));
+    const appName = apps.find(a => a.slug === slug)?.name ?? slug;
+    addActivity('generic', `${appName} was added to your workspace.`);
+  };
+
+  const uninstallApp = (slug: string) => {
+    setApps(prev => prev.map(a =>
+      a.slug === slug
+        ? { ...a, installed: false, status: 'coming_soon' as const, installedAt: undefined }
+        : a
+    ));
+    const appName = apps.find(a => a.slug === slug)?.name ?? slug;
+    addActivity('generic', `${appName} was removed from your workspace.`);
+  };
+
   const logout = () => {
     setUser(null);
     setBusiness(null);
@@ -309,6 +335,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       people,
       roles,
       activities,
+      apps,
       activeStep,
       authInitialMode,
       pendingContact,
@@ -326,6 +353,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateRole,
       deleteRole,
       updateBusiness,
+      installApp,
+      uninstallApp,
       logout,
       hasCapability,
       getRoleById

@@ -183,3 +183,26 @@ The dashboard answers exactly one question: "What happened in my business today?
 - Activity feed will eventually support filtering by type (people, inventory, orders).
 - Setup checklist steps will expand as new rooms are built.
 - Activity events should eventually persist to the backend and be real-time via websockets.
+
+---
+
+## ADR-009: Workspace Apps Architecture & Plain-English Tooling
+
+### Problem
+MSMEs are intimidated by complex ERP jargon like "Modules", "Sub-systems", or "Software Provisioning Matrix". Furthermore, software applications need a clean separation between internal engineering concepts (`features/apps/`, `WorkspaceApp`) and user-facing plain-English language ("Workspace", "tools", "installed tools").
+
+### Options Considered
+1. **ERP Module Registry Terminology**: Expose "Modules" in the UI with enable/disable toggle matrices.
+2. **Hardcoded Sidebar Navigation**: Manually edit sidebar UI components whenever a new business tool/room is added.
+3. **Registry-Driven Workspace Tools Architecture**: Build a centralized registry (`features/apps/registry.ts`) holding `WorkspaceApp` models (internal: `App`, UI: `Workspace`). Expose two calm sections: "Installed" and "Coming Soon". Architect the registry so future tools require zero sidebar changes when dynamic sidebar rendering is enabled.
+
+### Chosen Solution
+**Option 3: Registry-Driven Workspace Tools Architecture**.
+
+### Reason
+Keeps user experience completely free of technical ERP jargon while establishing a scalable architecture for future extensions. Installing or uninstalling tools automatically emits an `ActivityEvent`, keeping the workspace activity feed alive and transparent.
+
+### Future Considerations
+- Allow dynamic sidebar rendering directly from installed `WorkspaceApp` records (`showInSidebar === true`).
+- Enable App detail modal for permissions, configuration, and team access scopes per installed app.
+

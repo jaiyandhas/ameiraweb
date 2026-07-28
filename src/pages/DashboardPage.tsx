@@ -113,7 +113,7 @@ const SetupStep: React.FC<SetupStepProps> = ({ done, label, actionLabel, onActio
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 interface DashboardPageProps {
-  onNavigate: (tab: 'dashboard' | 'people' | 'roles' | 'settings') => void;
+  onNavigate: (tab: 'dashboard' | 'apps' | 'people' | 'roles' | 'settings') => void;
   onNavigateInvite: () => void;
   onNavigateCreateRole: () => void;
 }
