@@ -3,38 +3,57 @@ import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 
 // React Lazy Loading for Production Chunk Optimization
-const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
-const AuthPage = lazy(() => import('./pages/AuthPage').then(module => ({ default: module.AuthPage })));
-const VerifyPage = lazy(() => import('./pages/VerifyPage').then(module => ({ default: module.VerifyPage })));
-const CreateBusinessPage = lazy(() => import('./pages/CreateBusinessPage').then(module => ({ default: module.CreateBusinessPage })));
-const WorkspaceShell = lazy(() => import('./components/layout/WorkspaceShell').then(module => ({ default: module.WorkspaceShell })));
+const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
+const AuthPage = lazy(() => import('./pages/AuthPage').then(m => ({ default: m.AuthPage })));
+const VerifyPage = lazy(() => import('./pages/VerifyPage').then(m => ({ default: m.VerifyPage })));
+const CreateBusinessPage = lazy(() => import('./pages/CreateBusinessPage').then(m => ({ default: m.CreateBusinessPage })));
+const WorkspaceShell = lazy(() => import('./components/layout/WorkspaceShell').then(m => ({ default: m.WorkspaceShell })));
 
-const PeoplePage = lazy(() => import('./pages/PeoplePage').then(module => ({ default: module.PeoplePage })));
-const InvitePersonPage = lazy(() => import('./pages/InvitePersonPage').then(module => ({ default: module.InvitePersonPage })));
-const PersonDetailPage = lazy(() => import('./pages/PersonDetailPage').then(module => ({ default: module.PersonDetailPage })));
-const RolesPage = lazy(() => import('./pages/RolesPage').then(module => ({ default: module.RolesPage })));
-const CreateRolePage = lazy(() => import('./pages/CreateRolePage').then(module => ({ default: module.CreateRolePage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const PeoplePage = lazy(() => import('./pages/PeoplePage').then(m => ({ default: m.PeoplePage })));
+const InvitePersonPage = lazy(() => import('./pages/InvitePersonPage').then(m => ({ default: m.InvitePersonPage })));
+const PersonDetailPage = lazy(() => import('./pages/PersonDetailPage').then(m => ({ default: m.PersonDetailPage })));
+const RolesPage = lazy(() => import('./pages/RolesPage').then(m => ({ default: m.RolesPage })));
+const CreateRolePage = lazy(() => import('./pages/CreateRolePage').then(m => ({ default: m.CreateRolePage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+
+type WorkspaceTab = 'dashboard' | 'people' | 'roles' | 'settings';
 
 const AppContent: React.FC = () => {
-  const { activeStep, loginWithContact } = useWorkspace();
-  
-  // Internal workspace sub-views
-  const [workspaceTab, setWorkspaceTab] = useState<'people' | 'roles' | 'settings'>('people');
+  const { activeStep, openAuth, openRegister, goBackToLanding, authInitialMode } = useWorkspace();
+
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('dashboard');
   const [peopleSubView, setPeopleSubView] = useState<'list' | 'invite' | 'detail'>('list');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  
   const [rolesSubView, setRolesSubView] = useState<'list' | 'create' | 'edit'>('list');
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+
+  const handleNavigate = (tab: WorkspaceTab) => {
+    setWorkspaceTab(tab);
+    setPeopleSubView('list');
+    setRolesSubView('list');
+  };
+
+  // Cross-tab navigation helpers (called from Dashboard quick actions)
+  const handleDashboardInvite = () => {
+    setWorkspaceTab('people');
+    setPeopleSubView('invite');
+  };
+
+  const handleDashboardCreateRole = () => {
+    setWorkspaceTab('roles');
+    setSelectedRoleId(null);
+    setRolesSubView('create');
+  };
 
   return (
     <Suspense fallback={<LoadingScreen message="loading ameira..." />}>
       {activeStep === 'landing' && (
-        <LandingPage onStart={() => loginWithContact('')} />
+        <LandingPage onStart={() => openRegister()} onSignIn={() => openAuth()} />
       )}
 
       {activeStep === 'login' && (
-        <AuthPage onBackToLanding={() => window.location.reload()} />
+        <AuthPage initialMode={authInitialMode} onBackToLanding={goBackToLanding} />
       )}
 
       {activeStep === 'verify' && <VerifyPage />}
@@ -42,34 +61,32 @@ const AppContent: React.FC = () => {
       {activeStep === 'create-business' && <CreateBusinessPage />}
 
       {activeStep === 'workspace' && (
-        <WorkspaceShell
-          currentTab={workspaceTab}
-          onNavigate={(tab) => {
-            setWorkspaceTab(tab);
-            setPeopleSubView('list');
-            setRolesSubView('list');
-          }}
-        >
-          {/* Tab 1: People */}
+        <WorkspaceShell currentTab={workspaceTab} onNavigate={handleNavigate}>
+
+          {/* Dashboard */}
+          {workspaceTab === 'dashboard' && (
+            <DashboardPage
+              onNavigate={handleNavigate}
+              onNavigateInvite={handleDashboardInvite}
+              onNavigateCreateRole={handleDashboardCreateRole}
+            />
+          )}
+
+          {/* People */}
           {workspaceTab === 'people' && (
             <>
               {peopleSubView === 'list' && (
                 <PeoplePage
                   onNavigateInvite={() => setPeopleSubView('invite')}
-                  onSelectPerson={(personId) => {
-                    setSelectedPersonId(personId);
-                    setPeopleSubView('detail');
-                  }}
+                  onSelectPerson={(id) => { setSelectedPersonId(id); setPeopleSubView('detail'); }}
                 />
               )}
-
               {peopleSubView === 'invite' && (
                 <InvitePersonPage
                   onBack={() => setPeopleSubView('list')}
                   onSuccess={() => setPeopleSubView('list')}
                 />
               )}
-
               {peopleSubView === 'detail' && selectedPersonId && (
                 <PersonDetailPage
                   personId={selectedPersonId}
@@ -79,22 +96,15 @@ const AppContent: React.FC = () => {
             </>
           )}
 
-          {/* Tab 2: Roles & Access */}
+          {/* Roles */}
           {workspaceTab === 'roles' && (
             <>
               {rolesSubView === 'list' && (
                 <RolesPage
-                  onNavigateCreateRole={() => {
-                    setSelectedRoleId(null);
-                    setRolesSubView('create');
-                  }}
-                  onSelectRole={(roleId) => {
-                    setSelectedRoleId(roleId);
-                    setRolesSubView('edit');
-                  }}
+                  onNavigateCreateRole={() => { setSelectedRoleId(null); setRolesSubView('create'); }}
+                  onSelectRole={(id) => { setSelectedRoleId(id); setRolesSubView('edit'); }}
                 />
               )}
-
               {(rolesSubView === 'create' || rolesSubView === 'edit') && (
                 <CreateRolePage
                   roleId={selectedRoleId || undefined}
@@ -105,8 +115,9 @@ const AppContent: React.FC = () => {
             </>
           )}
 
-          {/* Tab 3: Settings */}
+          {/* Settings */}
           {workspaceTab === 'settings' && <SettingsPage />}
+
         </WorkspaceShell>
       )}
     </Suspense>

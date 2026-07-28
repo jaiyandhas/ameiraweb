@@ -138,3 +138,48 @@ Aligns directly with Ameira's core principle: *Avoid clutter. Every pixel should
 ### Future Considerations
 Keep hero sections strictly minimalist across all future landing and marketing pages.
 
+---
+
+## ADR-007: Landing Page Value Proposition & Workspace Preview Redesign
+
+### Problem
+Generic marketing phrases and features lists failed to communicate the core value proposition of Ameira within ten seconds. Users needed a clear contrast between scattered daily tools (WhatsApp, Excel, paper) and one shared workspace, plus a realistic product preview without misleading analytics charts.
+
+### Options Considered
+1. **Generic Marketing Graphics & Charts**: Use stock icons, fake dashboard charts, and feature bullet lists.
+2. **ERP Feature Matrix**: List complex modules and enterprise capabilities.
+3. **Core Brand Statement & Realistic Workspace Preview**: Anchor around *"Your business. One workspace."*, include a 3-step "How Ameira Works" card grid, a Before-vs-With Ameira comparison, a realistic non-analytics workspace activity preview, and clearly tagged "Coming Soon" roadmap items.
+
+### Chosen Solution
+**Option 3: Core Brand Statement & Realistic Workspace Preview**.
+
+### Reason
+Focuses strictly on value and trust. Eliminates artificial charts, fake metrics, and dark patterns while demonstrating exactly how Ameira transforms operations for non-technical business owners.
+
+### Future Considerations
+Continuously align future product marketing with the "Your business. One workspace." core brand statement.
+
+
+
+---
+
+## ADR-008: Dashboard as Authenticated Home — Activity Feed Architecture
+
+### Problem
+After sign-in, users landed immediately on the People list with no orientation, context, or sense of "what happened today." The workspace had no home screen.
+
+### Options Considered
+1. **KPI Dashboard**: Revenue cards, charts, tables — ERP-style density.
+2. **Empty Home Screen**: Just a welcome message with no content.
+3. **Activity Feed Home**: A time-aware greeting, a chronological activity feed, quick actions, workspace overview numbers, and a conditional setup checklist.
+
+### Chosen Solution
+**Option 3: Activity Feed Home.**
+
+### Reason
+The dashboard answers exactly one question: "What happened in my business today?" No charts. No revenue. No graphs. The activity feed becomes the spine of the product — every future feature (inventory, orders, marketplace) will push events into it. Quick actions provide the three most common next steps without requiring menu exploration. The setup checklist disappears once complete, so it only exists when useful.
+
+### Future Considerations
+- Activity feed will eventually support filtering by type (people, inventory, orders).
+- Setup checklist steps will expand as new rooms are built.
+- Activity events should eventually persist to the backend and be real-time via websockets.

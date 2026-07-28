@@ -142,7 +142,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           </>
         ) : (
           <>
-            Create Business Account
+            Start Your Workspace
             <ArrowRight className="h-5 w-5" />
           </>
         )}

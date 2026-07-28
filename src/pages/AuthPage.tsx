@@ -29,19 +29,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     switch (mode) {
       case 'register':
         return {
-          title: 'Create Business Account',
-          subtitle: 'Set up your workspace for your store, factory, or wholesale business.'
+          title: 'Start your workspace',
+          subtitle: 'Create a free account for your store, factory or wholesale business.'
         };
       case 'forgot':
         return {
-          title: 'Reset Your Password',
-          subtitle: 'Enter your registered email or phone number to receive reset instructions.'
+          title: 'Reset your password',
+          subtitle: 'Enter your registered email or phone number and we\'ll send reset instructions.'
         };
       case 'login':
       default:
         return {
-          title: 'Sign In to Ameira',
-          subtitle: 'Enter your account details to access your business workspace.'
+          title: 'Welcome back',
+          subtitle: 'Sign in to your Ameira workspace.'
         };
     }
   };

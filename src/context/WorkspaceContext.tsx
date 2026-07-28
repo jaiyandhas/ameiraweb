@@ -4,7 +4,9 @@ import type {
   Business, 
   Person, 
   Role, 
-  CapabilityId
+  CapabilityId,
+  ActivityEvent,
+  ActivityEventType
 } from '../types';
 
 interface WorkspaceContextType {
@@ -12,10 +14,15 @@ interface WorkspaceContextType {
   business: Business | null;
   people: Person[];
   roles: Role[];
+  activities: ActivityEvent[];
   activeStep: 'landing' | 'login' | 'verify' | 'create-business' | 'workspace';
+  authInitialMode: 'login' | 'register';
   pendingContact: string;
 
   // Actions
+  openAuth: () => void;
+  openRegister: () => void;
+  goBackToLanding: () => void;
   setPendingContact: (contact: string) => void;
   loginWithContact: (contact: string) => void;
   verifyOtp: (code: string) => boolean;
@@ -92,6 +99,18 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [people, setPeople] = useState<Person[]>(INITIAL_PEOPLE);
   const [roles, setRoles] = useState<Role[]>(PRESET_ROLES);
   const [activeStep, setActiveStep] = useState<'landing' | 'login' | 'verify' | 'create-business' | 'workspace'>('landing');
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
+
+  const addActivity = (type: ActivityEventType, title: string) => {
+    const event: ActivityEvent = {
+      id: 'evt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      type,
+      title,
+      timestamp: new Date().toISOString(),
+    };
+    setActivities(prev => [event, ...prev]);
+  };
 
   // Load persistent session if present
   useEffect(() => {
@@ -104,9 +123,40 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, []);
 
+  const openAuth = () => {
+    setAuthInitialMode('login');
+    setActiveStep('login');
+  };
+
+  const openRegister = () => {
+    setAuthInitialMode('register');
+    setActiveStep('login');
+  };
+
+  const goBackToLanding = () => {
+    setAuthInitialMode('login');
+    setActiveStep('landing');
+  };
+
   const loginWithContact = (contact: string) => {
+    if (!contact || !contact.trim()) {
+      setActiveStep('login');
+      return;
+    }
     setPendingContact(contact);
-    setActiveStep('verify');
+    const newUser: UserSession = {
+      userId: 'user-' + Date.now(),
+      fullName: contact.includes('@') ? contact.split('@')[0] : 'Business Owner',
+      emailOrPhone: contact,
+    };
+    setUser(newUser);
+    localStorage.setItem('ameira_user', JSON.stringify(newUser));
+
+    if (business) {
+      setActiveStep('workspace');
+    } else {
+      setActiveStep('create-business');
+    }
   };
 
   const verifyOtp = (code: string): boolean => {
@@ -131,11 +181,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const createBusiness = (businessName: string) => {
     if (!user) return;
+    const now = new Date().toISOString();
     const newBusiness: Business = {
       id: 'biz-' + Date.now(),
       name: businessName,
       ownerId: user.userId,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: now.split('T')[0],
     };
     setBusiness(newBusiness);
     localStorage.setItem('ameira_business', JSON.stringify(newBusiness));
@@ -147,9 +198,32 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       emailOrPhone: user.emailOrPhone,
       roleId: 'role-owner',
       status: 'active',
-      joinedAt: new Date().toISOString().split('T')[0],
+      joinedAt: now.split('T')[0],
     };
     setPeople([ownerPerson, ...INITIAL_PEOPLE.slice(1)]);
+
+    // Seed initial activity events
+    const seedEvents: ActivityEvent[] = [
+      {
+        id: 'evt-seed-1',
+        type: 'business_created',
+        title: `${businessName} workspace was created.`,
+        timestamp: now,
+      },
+      {
+        id: 'evt-seed-2',
+        type: 'person_invited',
+        title: 'Priya Sharma was invited as Manager.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      },
+      {
+        id: 'evt-seed-3',
+        type: 'person_invited',
+        title: 'Vikram Singh was invited as Staff.',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      },
+    ];
+    setActivities(seedEvents);
     setActiveStep('workspace');
   };
 
@@ -163,6 +237,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       joinedAt: new Date().toISOString().split('T')[0],
     };
     setPeople(prev => [newPerson, ...prev]);
+    const roleName = roles.find(r => r.id === roleId)?.name || 'team member';
+    addActivity('person_invited', `${fullName} was invited as ${roleName}.`);
   };
 
   const updatePersonRole = (personId: string, roleId: string) => {
@@ -183,6 +259,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       capabilities
     };
     setRoles(prev => [...prev, newRole]);
+    addActivity('role_created', `"${name}" role was created.`);
     return newRoleId;
   };
 
@@ -201,6 +278,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const updated = { ...business, name };
     setBusiness(updated);
     localStorage.setItem('ameira_business', JSON.stringify(updated));
+    addActivity('settings_updated', `Business name updated to "${name}".`);
   };
 
   const logout = () => {
@@ -230,8 +308,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       business,
       people,
       roles,
+      activities,
       activeStep,
+      authInitialMode,
       pendingContact,
+      openAuth,
+      openRegister,
+      goBackToLanding,
       setPendingContact,
       loginWithContact,
       verifyOtp,

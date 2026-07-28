@@ -4,9 +4,10 @@ import { ArrowRight } from 'lucide-react';
 
 interface LandingNavbarProps {
   onStart: () => void;
+  onSignIn: () => void;
 }
 
-export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStart }) => {
+export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStart, onSignIn }) => {
   return (
     <header className="sticky top-0 z-40 bg-zinc-50/90 backdrop-blur-md border-b border-zinc-200/60 transition-all">
       <div className="max-w-6xl w-full mx-auto px-6 h-20 flex items-center justify-between">
@@ -24,7 +25,7 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStart }) => {
 
         {/* Minimal Navigation & Primary Action */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="md" onClick={onStart} className="hidden sm:inline-flex">
+          <Button variant="ghost" size="md" onClick={onSignIn} className="hidden sm:inline-flex">
             Sign In
           </Button>
           <Button variant="primary" size="md" onClick={onStart}>

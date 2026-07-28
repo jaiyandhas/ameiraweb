@@ -8,19 +8,19 @@ interface LandingFooterProps {
 
 export const LandingFooter: React.FC<LandingFooterProps> = ({ onStart }) => {
   return (
-    <footer className="bg-zinc-900 text-white pt-16 pb-12 border-t border-zinc-800">
+    <footer className="bg-zinc-900 text-white pt-16 pb-12 border-t border-zinc-800 font-sans">
       <div className="max-w-5xl mx-auto px-6">
         {/* Bottom CTA Box */}
         <div className="bg-zinc-800 border border-zinc-700/80 rounded-3xl p-10 sm:p-14 text-center flex flex-col items-center mb-16 shadow-xl">
           <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white max-w-2xl leading-tight">
-            Ready to simplify your business operations?
+            Your business.<br />One workspace.
           </h2>
           <p className="text-lg text-zinc-400 mt-4 max-w-xl">
-            Join retailers, manufacturers, and wholesalers building on Ameira today.
+            Bring your people, work, and operations into one simple workspace.
           </p>
           <div className="mt-8 w-full max-w-xs">
             <Button size="lg" onClick={onStart} fullWidth className="bg-white text-zinc-900 hover:bg-zinc-100 text-lg font-bold py-4">
-              Get Started Now
+              Start Your Workspace
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -38,7 +38,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onStart }) => {
           </div>
 
           <p className="text-zinc-400">
-            Ameira &copy; 2026. The Operating System for MSMEs.
+            Ameira &copy; 2026. The operating system for MSMEs.
           </p>
         </div>
       </div>

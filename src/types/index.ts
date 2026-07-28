@@ -70,3 +70,19 @@ export interface UserSession {
   emailOrPhone: string;
   avatarUrl?: string;
 }
+
+export type ActivityEventType =
+  | 'business_created'
+  | 'person_invited'
+  | 'person_joined'
+  | 'role_created'
+  | 'role_assigned'
+  | 'settings_updated'
+  | 'generic';
+
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  title: string;       // Human-readable sentence: "Priya was invited to the team."
+  timestamp: string;   // ISO 8601 string
+}
