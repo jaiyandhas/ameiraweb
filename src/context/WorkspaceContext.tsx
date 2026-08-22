@@ -13,6 +13,13 @@ import type {
 import { CAPABILITY_DEFINITIONS } from '../types';
 import { APP_REGISTRY } from '../features/apps/registry';
 import { supabase } from '../lib/supabase';
+import { 
+  apiUpdatePersonRole, 
+  apiRemovePerson, 
+  apiCreateRole, 
+  apiUpdateRole, 
+  apiDeleteRole 
+} from '../lib/api';
 
 export type BusinessCheckStatus = 'loading' | 'found' | 'not_found';
 
@@ -115,7 +122,6 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       if (!businessId) {
-        // Only trigger create-business if the user has no business loaded in state or local storage
         setBusiness((currentBiz) => {
           if (!currentBiz) {
             setBusinessStatus('not_found');
@@ -506,13 +512,20 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const updatePersonRole = async (personId: string, roleId: string): Promise<{ success: boolean; error?: string }> => {
     if (!business) return { success: false, error: 'No active workspace.' };
     
+    // 1. Call FastAPI enforcement layer
+    const apiRes = await apiUpdatePersonRole(personId, roleId);
+    if (apiRes.error && !apiRes.error.includes('Network error')) {
+      return { success: false, error: apiRes.error };
+    }
+
+    // 2. Direct Supabase update fallback
     const targetPerson = people.find(p => p.id === personId);
     if (!targetPerson) return { success: false, error: 'Person not found.' };
 
     const currentRole = roles.find(r => r.id === targetPerson.roleId);
     const newRole = roles.find(r => r.id === roleId);
 
-    // Safeguard: Do not allow demoting the only active Owner
+    // Sole-Owner safeguard
     if ((currentRole?.name === 'Owner' || targetPerson.roleId === 'role-owner') && newRole?.name !== 'Owner') {
       const activeOwners = people.filter(p => {
         const r = roles.find(role => role.id === p.roleId);
@@ -532,7 +545,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .update({ role_id: roleId, updated_at: new Date().toISOString() })
       .eq('id', personId);
 
-    if (error) {
+    if (error && !apiRes.data) {
       return { success: false, error: error.message };
     }
 
@@ -545,10 +558,16 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const removePerson = async (personId: string): Promise<{ success: boolean; error?: string }> => {
     if (!business) return { success: false, error: 'No active workspace.' };
     
+    // 1. Call FastAPI enforcement layer
+    const apiRes = await apiRemovePerson(personId);
+    if (apiRes.error && !apiRes.error.includes('Network error')) {
+      return { success: false, error: apiRes.error };
+    }
+
+    // 2. Direct Supabase deletion fallback
     const targetPerson = people.find(p => p.id === personId);
     if (!targetPerson) return { success: false, error: 'Person not found.' };
 
-    // Safeguard: Do not allow removing the only active Owner
     const targetRole = roles.find(r => r.id === targetPerson.roleId);
     if ((targetRole?.name === 'Owner' || targetPerson.roleId === 'role-owner') && targetPerson.status === 'active') {
       const activeOwners = people.filter(p => {
@@ -569,7 +588,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .delete()
       .eq('id', personId);
 
-    if (error) {
+    if (error && !apiRes.data) {
       return { success: false, error: error.message };
     }
 
@@ -581,6 +600,22 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const createRole = async (name: string, description: string, selectedCapabilities: CapabilityId[]): Promise<string> => {
     if (!business) return '';
 
+    // 1. Call FastAPI enforcement layer
+    const apiRes = await apiCreateRole(name, description, selectedCapabilities);
+    if (apiRes.data?.id) {
+      const createdRole: Role = {
+        id: apiRes.data.id,
+        name,
+        description,
+        isPreset: false,
+        capabilities: selectedCapabilities,
+      };
+      setRoles(prev => [...prev, createdRole]);
+      await addActivity('role_created', `"${name}" access level was created.`);
+      return apiRes.data.id;
+    }
+
+    // 2. Direct Supabase insert fallback
     const { data: newRole, error } = await supabase
       .from('roles')
       .insert({
@@ -597,7 +632,6 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return '';
     }
 
-    // Get capabilities mapping
     const { data: capRows } = await supabase
       .from('capabilities')
       .select('id, key')
@@ -633,6 +667,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   ): Promise<{ success: boolean; error?: string }> => {
     if (!business) return { success: false, error: 'No active workspace.' };
 
+    // 1. Call FastAPI enforcement layer
+    const apiRes = await apiUpdateRole(roleId, name, description, selectedCapabilities);
+    if (apiRes.error && !apiRes.error.includes('Network error')) {
+      return { success: false, error: apiRes.error };
+    }
+
+    // 2. Direct Supabase update fallback
     const targetRole = roles.find(r => r.id === roleId);
     if (targetRole?.isPreset || targetRole?.name === 'Owner') {
       return { success: false, error: 'System presets cannot be modified.' };
@@ -643,11 +684,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .update({ name, description, updated_at: new Date().toISOString() })
       .eq('id', roleId);
 
-    if (error) {
+    if (error && !apiRes.data) {
       return { success: false, error: error.message };
     }
 
-    // Re-link capabilities
     await supabase.from('role_capabilities').delete().eq('role_id', roleId);
     
     const { data: capRows } = await supabase
@@ -672,6 +712,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const deleteRole = async (roleId: string): Promise<{ success: boolean; error?: string }> => {
     if (!business) return { success: false, error: 'No active workspace.' };
     
+    // 1. Call FastAPI enforcement layer
+    const apiRes = await apiDeleteRole(roleId);
+    if (apiRes.error && !apiRes.error.includes('Network error')) {
+      return { success: false, error: apiRes.error };
+    }
+
+    // 2. Direct Supabase deletion fallback
     const targetRole = roles.find(r => r.id === roleId);
     if (!targetRole) return { success: false, error: 'Access level not found.' };
 
@@ -688,7 +735,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     const { error } = await supabase.from('roles').delete().eq('id', roleId);
-    if (error) {
+    if (error && !apiRes.data) {
       return { success: false, error: error.message };
     }
 

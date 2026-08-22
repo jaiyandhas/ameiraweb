@@ -522,6 +522,36 @@ Establishes an unbreakable, unified foundation for identity, authorization, acti
 ### Future Considerations
 - Implement email/SMS delivery webhooks for invite links upon backend FastAPI service initialization.
 
+---
+
+## ADR-027: FastAPI Capability-Enforcement Layer (Hybrid Architecture)
+
+### Problem
+Certain core business operations (role changes, access level creation/edit/deletion, member removal, and invite acceptance) require server-side workflow enforcement, multi-table transactions, and complex business rules (e.g. sole-owner lockout prevention, preset immutability) that Postgres RLS cannot easily express alone. However, routing simple reads through a backend would add latency and defeat the direct Supabase read performance.
+
+### Final Chosen Solution
+
+**Minimal-Hybrid Split**:
+- **Direct Supabase Reads**: People list, Roles list, Settings reads, Workspace Apps, and Dashboard activity feed stay on direct Supabase client calls.
+- **FastAPI Capability Enforcement (`backend/`)**:
+  - `POST /api/people/{person_id}/role`: Enforces `canManagePeople` capability, verifies tenant isolation, enforces sole-Owner demotion lockout, updates role, and logs to `activity_events`.
+  - `POST /api/people/{person_id}/remove`: Enforces `canManagePeople` capability, enforces sole-Owner removal lockout guard, deletes person, and logs to `activity_events`.
+  - `POST /api/roles` / `PATCH /api/roles/{role_id}` / `DELETE /api/roles/{role_id}`: Enforces `canManageRoles`, protects system presets (Owner), guards against deleting roles with active assignees, links capabilities, and logs to `activity_events`.
+  - `POST /api/invites/{invite_id}/accept`: Securely links an authenticated user to their pending `people` row, sets `status = 'active'`, and logs to `activity_events`.
+
+**Service Architecture**:
+- Python FastAPI with `asyncpg.create_pool` connection pooling (min 5, max 20 connections).
+- JWT Authentication Dependency: Validates Supabase-issued Bearer token on every request, extracts `user_id`, and derives `person_id`, `business_id`, and granted capabilities strictly server-side (never trusts client-supplied tenant IDs).
+- Service role key kept strictly in backend environment variables.
+- Colocation note: Backend service is designed to be hosted alongside the Postgres instance (e.g. on Fly.io / AWS ECS in the same cloud region) to keep DB latency under 5ms.
+
+### Reason
+Combines the speed of direct database reads with bulletproof server-side capability and workflow enforcement, preventing tenant bypass and workspace lockout while preserving clean architecture.
+
+### Future Considerations
+- Wire future business modules (Inventory stock adjustments, Order status transitions) through dedicated capability-enforced endpoints as they are introduced.
+
+
 
 
 
