@@ -206,3 +206,25 @@ Keeps user experience completely free of technical ERP jargon while establishing
 - Allow dynamic sidebar rendering directly from installed `WorkspaceApp` records (`showInSidebar === true`).
 - Enable App detail modal for permissions, configuration, and team access scopes per installed app.
 
+---
+
+## ADR-010: Supabase Client & Agent Skills Integration
+
+### Problem
+Ameira needs a persistent cloud database backend for real-time business sync, user authentication, and data persistence without adding unnecessary backend server overhead.
+
+### Options Considered
+1. **Custom Server Infrastructure**: Self-hosted custom backend API with manual ORM migrations.
+2. **Direct Supabase Integration**: `@supabase/supabase-js` client SDK with environmental configuration (`.env.local`) and client helper utilities (`src/utils/supabase/client.ts` & `src/lib/supabase.ts`).
+
+### Chosen Solution
+**Option 2: Direct Supabase Integration**.
+
+### Reason
+Provides instant PostgreSQL database capabilities, real-time subscriptions, secure auth persistence, and clean agent skills tooling (`.agents/skills/supabase` & `.agents/skills/supabase-postgres-best-practices`).
+
+### Future Considerations
+- Connect `WorkspaceContext` state mutations directly to Supabase PostgreSQL tables.
+- Enable Supabase Row Level Security (RLS) for multi-tenant business data isolation.
+
+
