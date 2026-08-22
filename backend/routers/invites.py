@@ -28,15 +28,19 @@ async def accept_invitation(
                     invite_id
                 )
                 if not invite:
-                    raise HTTPException(status_code=404, detail="Invitation not found or has expired.")
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found or has expired.")
 
                 if invite["status"] != "invited":
-                    raise HTTPException(status_code=400, detail="This invitation has already been accepted or processed.")
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation has already been accepted or processed.")
 
                 # 2. Verify identity matches
                 invite_contact = invite["email_or_phone"].strip().lower()
                 if user_email and invite_contact != user_email:
-                    logger.warning(f"Invite contact mismatch: invite is for '{invite_contact}', user email is '{user_email}'")
+                    logger.warning(f"Invite contact mismatch: invite is for '{invite_contact}', authenticated user is '{user_email}'")
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"This invitation was sent to '{invite_contact}', but you are signed in as '{user_email}'."
+                    )
 
                 # 3. Transition invite to active person record
                 await conn.execute(
@@ -80,13 +84,22 @@ async def accept_invitation(
             headers=svc_headers
         )
         if i_resp.status_code != 200 or len(i_resp.json()) == 0:
-            raise HTTPException(status_code=404, detail="Invitation not found.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found or has expired.")
 
         invite = i_resp.json()[0]
         if invite.get("status") != "invited":
-            raise HTTPException(status_code=400, detail="This invitation has already been accepted.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This invitation has already been accepted or processed.")
 
-        # 2. Update person
+        # 2. Verify identity matches
+        invite_contact = str(invite.get("email_or_phone", "")).strip().lower()
+        if user_email and invite_contact != user_email:
+            logger.warning(f"Invite contact mismatch: invite is for '{invite_contact}', authenticated user is '{user_email}'")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"This invitation was sent to '{invite_contact}', but you are signed in as '{user_email}'."
+            )
+
+        # 3. Update person
         now_str = now_iso.isoformat()
         await http_client.patch(
             f"{settings.SUPABASE_URL}/rest/v1/people?id=eq.{invite_id}",
