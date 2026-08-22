@@ -62,6 +62,11 @@ export interface Business {
   logoUrl?: string;
   ownerId: string;
   createdAt: string;
+  address?: string;
+  city?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  currency?: string;
 }
 
 export interface UserSession {

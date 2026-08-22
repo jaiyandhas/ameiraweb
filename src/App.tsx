@@ -247,9 +247,13 @@ const AppRoutes: React.FC = () => {
                     <Route path="/people/invite" element={<InvitePersonPageWrapper />} />
                     <Route path="/people/:id" element={<PersonDetailPageWrapper />} />
                     <Route path="/roles" element={<RolesPageWrapper />} />
+                    <Route path="/roles/new" element={<CreateRolePageWrapper />} />
                     <Route path="/roles/create" element={<CreateRolePageWrapper />} />
+                    <Route path="/roles/:id" element={<CreateRolePageWrapper />} />
                     <Route path="/roles/:id/edit" element={<CreateRolePageWrapper />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/settings/apps" element={<SettingsPage />} />
+                    <Route path="/settings/account" element={<SettingsPage />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                 </Suspense>
@@ -263,9 +267,13 @@ const AppRoutes: React.FC = () => {
           <Route path="/people/invite" element={null} />
           <Route path="/people/:id" element={null} />
           <Route path="/roles" element={null} />
+          <Route path="/roles/new" element={null} />
           <Route path="/roles/create" element={null} />
+          <Route path="/roles/:id" element={null} />
           <Route path="/roles/:id/edit" element={null} />
           <Route path="/settings" element={null} />
+          <Route path="/settings/apps" element={null} />
+          <Route path="/settings/account" element={null} />
           <Route path="*" element={null} />
         </Route>
 

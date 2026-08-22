@@ -488,6 +488,41 @@ Added horizontal bleed padding (`pr-2 pb-1`) to eliminate character cutoff on `p
 
 </details>
 
+---
+
+## ADR-026: Core Rooms Completion — People, Access Levels (Roles), and Settings
+
+### Problem
+Before any new business module (Inventory, Orders, Marketplace) is started, Ameira's three foundational rooms — People, Access Levels (Roles), and Settings — must be genuinely complete, not placeholders. Every screen must answer exactly one question (ADR-001), use plain-English terminology (ADR-002), maintain real route separation (ADR-015), and hook into `activity_events` (ADR-008).
+
+### Final Chosen Solution
+
+**Room 1: People (`/people`)**
+- `/people` — Scannable team directory with name, contact info, Access Level badge, and status filter tabs (All / Active / Pending). Answer: *"Who's in my business?"*
+- `/people/invite` — Two-step invite form: (1) Name & Email/Phone, (2) Access Level selection. Pending invites are represented as rows in `public.people` with `status = 'invited'` and nullable `user_id` until accepted. Answer: *"Who am I adding, and what can they do?"*
+- `/people/:id` — Person detail view with interactive Access Level modifier, recent activity history, and "Remove Person" action. Includes a sole-owner lockout guard preventing removal or demotion of the last active Owner. Answer: *"What does this person do here?"*
+
+**Room 2: Access Levels (`/roles`)**
+- `/roles` — Access Level gallery showing name, description, assigned member count, and granted capabilities. Answer: *"What levels of access exist?"*
+- `/roles/new` & `/roles/:id` — Creation and detail/edit view driven dynamically by rows from `public.capabilities` table. Capability toggles reflect the installed apps without frontend hardcoding. Preset Owner role is protected from deletion or permission modification. Answer: *"What can someone at this level do?"*
+
+**Room 3: Settings (`/settings`)**
+- `/settings` (Profile) — Manage business name, street address, city/region, contact email, contact phone, and currency format against `public.businesses`. Answer: *"What is my business called and where is it?"*
+- `/settings/apps` (Workspace Tools) — View active installed tools and upcoming roadmap tools. Answer: *"What tools does my business use?"*
+- `/settings/account` (My Account) — Manage user identity, view user ID, trigger password reset instructions, and sign out. Answer: *"How do I manage my own account?"*
+
+**Cross-Cutting Architecture:**
+- Real URL routes wrapped in `<RequireBusiness>`.
+- All write actions (inviting a person, changing a role, deleting a role, updating settings) automatically log human-readable events to `public.activity_events`.
+- Strict plain-English terminology enforced throughout (e.g. "Access Level", "Tools", "People" — zero RBAC/CRUD/Tenant jargon).
+
+### Reason
+Establishes an unbreakable, unified foundation for identity, authorization, activity logging, and business configuration that all future modules will build upon.
+
+### Future Considerations
+- Implement email/SMS delivery webhooks for invite links upon backend FastAPI service initialization.
+
+
 
 
 

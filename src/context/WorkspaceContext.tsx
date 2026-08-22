@@ -5,10 +5,12 @@ import type {
   Person, 
   Role, 
   CapabilityId,
+  CapabilityDefinition,
   ActivityEvent,
   ActivityEventType,
   WorkspaceApp
 } from '../types';
+import { CAPABILITY_DEFINITIONS } from '../types';
 import { APP_REGISTRY } from '../features/apps/registry';
 import { supabase } from '../lib/supabase';
 
@@ -19,6 +21,7 @@ interface WorkspaceContextType {
   business: Business | null;
   people: Person[];
   roles: Role[];
+  capabilities: CapabilityDefinition[];
   activities: ActivityEvent[];
   apps: WorkspaceApp[];
   activeStep: 'landing' | 'login' | 'verify' | 'create-business' | 'workspace';
@@ -35,12 +38,12 @@ interface WorkspaceContextType {
   verifyOtp: (code: string) => boolean;
   createBusiness: (businessName: string) => Promise<{ success: boolean; error?: string }>;
   invitePerson: (fullName: string, emailOrPhone: string, roleId: string) => Promise<void>;
-  updatePersonRole: (personId: string, roleId: string) => Promise<void>;
-  removePerson: (personId: string) => Promise<void>;
+  updatePersonRole: (personId: string, roleId: string) => Promise<{ success: boolean; error?: string }>;
+  removePerson: (personId: string) => Promise<{ success: boolean; error?: string }>;
   createRole: (name: string, description: string, capabilities: CapabilityId[]) => Promise<string>;
-  updateRole: (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => Promise<void>;
-  deleteRole: (roleId: string) => Promise<void>;
-  updateBusiness: (name: string) => Promise<void>;
+  updateRole: (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => Promise<{ success: boolean; error?: string }>;
+  deleteRole: (roleId: string) => Promise<{ success: boolean; error?: string }>;
+  updateBusiness: (updates: Partial<Business>) => Promise<void>;
   installApp: (slug: string) => Promise<void>;
   uninstallApp: (slug: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -56,6 +59,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [business, setBusiness] = useState<Business | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [capabilities, setCapabilities] = useState<CapabilityDefinition[]>(CAPABILITY_DEFINITIONS);
   const [activeStep, setActiveStep] = useState<'landing' | 'login' | 'verify' | 'create-business' | 'workspace'>('landing');
   const [businessStatus, setBusinessStatus] = useState<BusinessCheckStatus>('loading');
   const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
@@ -139,10 +143,32 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           logoUrl: bizData.logo_url || undefined,
           ownerId: bizData.owner_id || userId,
           createdAt: bizData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          address: bizData.address || undefined,
+          city: bizData.city || undefined,
+          contactEmail: bizData.contact_email || undefined,
+          contactPhone: bizData.contact_phone || undefined,
+          currency: bizData.currency || 'INR (₹)',
         });
       }
 
-      // 3. Fetch People for this business
+      // 3. Fetch Capabilities dynamically from database
+      const { data: capData } = await supabase
+        .from('capabilities')
+        .select('*');
+
+      if (capData && capData.length > 0) {
+        setCapabilities(capData.map(c => ({
+          id: c.key as CapabilityId,
+          title: c.name || c.title || c.key,
+          description: c.description || '',
+          category: (c.app_slug === 'team' ? 'People' : c.app_slug === 'settings' ? 'Settings' : 'Roles') as any,
+        })));
+      }
+
+      const capIdToKeyMap = new Map<string, CapabilityId>();
+      (capData || []).forEach(c => capIdToKeyMap.set(c.id, c.key as CapabilityId));
+
+      // 4. Fetch People for this business
       const { data: peopleData } = await supabase
         .from('people')
         .select('*')
@@ -161,20 +187,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         })));
       }
 
-      // 4. Fetch Roles (Preset global roles + Business specific roles)
+      // 5. Fetch Roles (Preset global roles + Business specific roles)
       const { data: rolesData } = await supabase
         .from('roles')
         .select('*')
         .or(`business_id.eq.${businessId},business_id.is.null`)
         .order('created_at', { ascending: true });
-
-      // Fetch capabilities for these roles
-      const { data: capData } = await supabase
-        .from('capabilities')
-        .select('id, key');
-
-      const capIdToKeyMap = new Map<string, CapabilityId>();
-      (capData || []).forEach(c => capIdToKeyMap.set(c.id, c.key as CapabilityId));
 
       const { data: roleCapsData } = await supabase
         .from('role_capabilities')
@@ -196,11 +214,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           name: r.name,
           description: r.description || '',
           isPreset: r.is_preset,
-          capabilities: roleCapsMap.get(r.id) || [],
+          capabilities: roleCapsMap.get(r.id) || (r.name === 'Owner' ? ['canManagePeople', 'canManageRoles', 'canViewBusinessSettings', 'canEditBusinessSettings'] : []),
         })));
       }
 
-      // 5. Fetch Installed Apps for this business
+      // 6. Fetch Installed Apps for this business
       const { data: installedAppsData } = await supabase
         .from('business_installed_apps')
         .select('app_slug, installed_at')
@@ -215,13 +233,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return app;
       }));
 
-      // 6. Fetch Activity Events
+      // 7. Fetch Activity Events
       const { data: activityData } = await supabase
         .from('activity_events')
         .select('*')
         .eq('business_id', businessId)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(30);
 
       if (activityData) {
         setActivities(activityData.map(evt => ({
@@ -246,11 +264,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (session?.user) {
         const fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Business Owner';
         loadBusinessData(session.user.id, session.user.email || '', fullName);
+      } else {
+        setBusinessStatus('not_found');
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        setBusinessStatus('loading');
         const fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Business Owner';
         loadBusinessData(session.user.id, session.user.email || '', fullName);
       } else {
@@ -396,12 +417,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.warn('Activity log notice:', e);
       }
 
-      // 6. Update local workspace context state and navigate
+      // 6. Update local workspace context state
       const createdBiz: Business = {
         id: newBizId,
         name: businessName,
         ownerId: currentUserId,
         createdAt: createdAtStr.split('T')[0],
+        currency: 'INR (₹)',
       };
 
       const ownerPerson: Person = {
@@ -434,12 +456,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return { success: true };
     } catch (err: any) {
       console.error('Error in createBusiness:', err);
-      // Ensure user is never stuck: fallback state transition
       const fallbackBiz: Business = {
         id: 'biz-' + Date.now(),
         name: businessName,
         ownerId: user?.userId || 'user-owner',
         createdAt: new Date().toISOString().split('T')[0],
+        currency: 'INR (₹)',
       };
       setBusiness(fallbackBiz);
       setBusinessStatus('found');
@@ -477,40 +499,86 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       joinedAt: newPerson.joined_at?.split('T')[0] || new Date().toISOString().split('T')[0],
     }, ...prev]);
 
-    const roleName = roles.find(r => r.id === roleId)?.name || 'team member';
+    const roleName = roles.find(r => r.id === roleId)?.name || 'Access Level';
     await addActivity('person_invited', `${fullName} was invited as ${roleName}.`);
   };
 
-  const updatePersonRole = async (personId: string, roleId: string) => {
-    if (!business) return;
+  const updatePersonRole = async (personId: string, roleId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!business) return { success: false, error: 'No active workspace.' };
+    
+    const targetPerson = people.find(p => p.id === personId);
+    if (!targetPerson) return { success: false, error: 'Person not found.' };
+
+    const currentRole = roles.find(r => r.id === targetPerson.roleId);
+    const newRole = roles.find(r => r.id === roleId);
+
+    // Safeguard: Do not allow demoting the only active Owner
+    if ((currentRole?.name === 'Owner' || targetPerson.roleId === 'role-owner') && newRole?.name !== 'Owner') {
+      const activeOwners = people.filter(p => {
+        const r = roles.find(role => role.id === p.roleId);
+        return (r?.name === 'Owner' || p.roleId === 'role-owner') && p.status === 'active';
+      });
+
+      if (activeOwners.length <= 1) {
+        return { 
+          success: false, 
+          error: 'Cannot change the access level of the only active Owner. Designate another Owner first.' 
+        };
+      }
+    }
+
     const { error } = await supabase
       .from('people')
       .update({ role_id: roleId, updated_at: new Date().toISOString() })
       .eq('id', personId);
 
-    if (!error) {
-      setPeople(prev => prev.map(p => p.id === personId ? { ...p, roleId } : p));
-      const personName = people.find(p => p.id === personId)?.fullName || 'Team member';
-      const roleName = roles.find(r => r.id === roleId)?.name || 'role';
-      await addActivity('role_assigned', `${personName}'s role was updated to ${roleName}.`);
+    if (error) {
+      return { success: false, error: error.message };
     }
+
+    setPeople(prev => prev.map(p => p.id === personId ? { ...p, roleId } : p));
+    const roleName = newRole?.name || 'Access Level';
+    await addActivity('role_assigned', `${targetPerson.fullName}'s access level was changed to ${roleName}.`);
+    return { success: true };
   };
 
-  const removePerson = async (personId: string) => {
-    if (!business) return;
-    const personName = people.find(p => p.id === personId)?.fullName || 'Team member';
+  const removePerson = async (personId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!business) return { success: false, error: 'No active workspace.' };
+    
+    const targetPerson = people.find(p => p.id === personId);
+    if (!targetPerson) return { success: false, error: 'Person not found.' };
+
+    // Safeguard: Do not allow removing the only active Owner
+    const targetRole = roles.find(r => r.id === targetPerson.roleId);
+    if ((targetRole?.name === 'Owner' || targetPerson.roleId === 'role-owner') && targetPerson.status === 'active') {
+      const activeOwners = people.filter(p => {
+        const r = roles.find(role => role.id === p.roleId);
+        return (r?.name === 'Owner' || p.roleId === 'role-owner') && p.status === 'active';
+      });
+
+      if (activeOwners.length <= 1) {
+        return { 
+          success: false, 
+          error: 'Cannot remove the sole Owner of the business workspace.' 
+        };
+      }
+    }
+
     const { error } = await supabase
       .from('people')
       .delete()
       .eq('id', personId);
 
-    if (!error) {
-      setPeople(prev => prev.filter(p => p.id !== personId));
-      await addActivity('generic', `${personName} was removed from the business.`);
+    if (error) {
+      return { success: false, error: error.message };
     }
+
+    setPeople(prev => prev.filter(p => p.id !== personId));
+    await addActivity('generic', `${targetPerson.fullName} was removed from the business.`);
+    return { success: true };
   };
 
-  const createRole = async (name: string, description: string, capabilities: CapabilityId[]): Promise<string> => {
+  const createRole = async (name: string, description: string, selectedCapabilities: CapabilityId[]): Promise<string> => {
     if (!business) return '';
 
     const { data: newRole, error } = await supabase
@@ -533,7 +601,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const { data: capRows } = await supabase
       .from('capabilities')
       .select('id, key')
-      .in('key', capabilities);
+      .in('key', selectedCapabilities);
 
     if (capRows && capRows.length > 0) {
       await supabase
@@ -549,21 +617,35 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       name,
       description,
       isPreset: false,
-      capabilities,
+      capabilities: selectedCapabilities,
     };
 
     setRoles(prev => [...prev, createdRole]);
-    await addActivity('role_created', `"${name}" role was created.`);
+    await addActivity('role_created', `"${name}" access level was created.`);
     return newRole.id;
   };
 
-  const updateRole = async (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => {
-    if (!business) return;
+  const updateRole = async (
+    roleId: string, 
+    name: string, 
+    description: string, 
+    selectedCapabilities: CapabilityId[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!business) return { success: false, error: 'No active workspace.' };
 
-    await supabase
+    const targetRole = roles.find(r => r.id === roleId);
+    if (targetRole?.isPreset || targetRole?.name === 'Owner') {
+      return { success: false, error: 'System presets cannot be modified.' };
+    }
+
+    const { error } = await supabase
       .from('roles')
       .update({ name, description, updated_at: new Date().toISOString() })
       .eq('id', roleId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
 
     // Re-link capabilities
     await supabase.from('role_capabilities').delete().eq('role_id', roleId);
@@ -571,7 +653,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const { data: capRows } = await supabase
       .from('capabilities')
       .select('id, key')
-      .in('key', capabilities);
+      .in('key', selectedCapabilities);
 
     if (capRows && capRows.length > 0) {
       await supabase
@@ -582,34 +664,62 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         })));
     }
 
-    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name, description, capabilities } : r));
-    await addActivity('generic', `"${name}" role details were updated.`);
+    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name, description, capabilities: selectedCapabilities } : r));
+    await addActivity('generic', `"${name}" access level details were updated.`);
+    return { success: true };
   };
 
-  const deleteRole = async (roleId: string) => {
-    if (!business) return;
-    const roleName = roles.find(r => r.id === roleId)?.name || 'Role';
+  const deleteRole = async (roleId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!business) return { success: false, error: 'No active workspace.' };
+    
+    const targetRole = roles.find(r => r.id === roleId);
+    if (!targetRole) return { success: false, error: 'Access level not found.' };
 
-    // Delete role from Supabase
-    await supabase.from('roles').delete().eq('id', roleId);
+    if (targetRole.isPreset || targetRole.name === 'Owner') {
+      return { success: false, error: 'System preset access levels cannot be deleted.' };
+    }
 
-    setPeople(prev => prev.map(p => p.roleId === roleId ? { ...p, roleId: 'role-staff' } : p));
+    const assignedCount = people.filter(p => p.roleId === roleId).length;
+    if (assignedCount > 0) {
+      return { 
+        success: false, 
+        error: `Cannot delete "${targetRole.name}" because ${assignedCount} team member(s) are assigned to it. Reassign them first.` 
+      };
+    }
+
+    const { error } = await supabase.from('roles').delete().eq('id', roleId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
     setRoles(prev => prev.filter(r => r.id !== roleId));
-    await addActivity('generic', `"${roleName}" role was deleted.`);
+    await addActivity('generic', `"${targetRole.name}" access level was deleted.`);
+    return { success: true };
   };
 
-  const updateBusiness = async (name: string) => {
+  const updateBusiness = async (updates: Partial<Business>) => {
     if (!business) return;
+
+    const dbPayload: any = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.name !== undefined) dbPayload.name = updates.name;
+    if (updates.address !== undefined) dbPayload.address = updates.address;
+    if (updates.city !== undefined) dbPayload.city = updates.city;
+    if (updates.contactEmail !== undefined) dbPayload.contact_email = updates.contactEmail;
+    if (updates.contactPhone !== undefined) dbPayload.contact_phone = updates.contactPhone;
+    if (updates.currency !== undefined) dbPayload.currency = updates.currency;
 
     const { error } = await supabase
       .from('businesses')
-      .update({ name, updated_at: new Date().toISOString() })
+      .update(dbPayload)
       .eq('id', business.id);
 
     if (!error) {
-      const updated = { ...business, name };
+      const updated: Business = { ...business, ...updates };
       setBusiness(updated);
-      await addActivity('settings_updated', `Business name updated to "${name}".`);
+      localStorage.setItem('ameira_business', JSON.stringify(updated));
+      await addActivity('settings_updated', `Business details were updated.`);
     }
   };
 
@@ -649,6 +759,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const logout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem('ameira_business');
+    localStorage.removeItem('ameira_user');
     setUser(null);
     setBusiness(null);
     setPeople([]);
@@ -657,50 +769,55 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setActiveStep('landing');
   };
 
-  const getRoleById = (roleId: string) => {
+  const hasCapability = (capability: CapabilityId): boolean => {
+    if (!user || !people.length) return false;
+    const currentPerson = people.find(p => p.emailOrPhone === user.emailOrPhone || p.fullName === user.fullName);
+    if (!currentPerson) return false;
+    const userRole = roles.find(r => r.id === currentPerson.roleId);
+    if (!userRole) return false;
+    if (userRole.isPreset && userRole.name === 'Owner') return true;
+    return userRole.capabilities.includes(capability);
+  };
+
+  const getRoleById = (roleId: string): Role | undefined => {
     return roles.find(r => r.id === roleId);
   };
 
-  const hasCapability = (capability: CapabilityId): boolean => {
-    if (!user || !people.length) return false;
-    const currentPerson = people.find(p => p.emailOrPhone === user.emailOrPhone) || people[0];
-    const role = getRoleById(currentPerson.roleId);
-    if (!role) return false;
-    return role.capabilities.includes(capability);
-  };
-
   return (
-    <WorkspaceContext.Provider value={{
-      user,
-      business,
-      people,
-      roles,
-      activities,
-      apps,
-      activeStep,
-      businessStatus,
-      authInitialMode,
-      pendingContact,
-      openAuth,
-      openRegister,
-      goBackToLanding,
-      setPendingContact,
-      loginWithContact,
-      verifyOtp,
-      createBusiness,
-      invitePerson,
-      updatePersonRole,
-      removePerson,
-      createRole,
-      updateRole,
-      deleteRole,
-      updateBusiness,
-      installApp,
-      uninstallApp,
-      logout,
-      hasCapability,
-      getRoleById
-    }}>
+    <WorkspaceContext.Provider
+      value={{
+        user,
+        business,
+        people,
+        roles,
+        capabilities,
+        activities,
+        apps,
+        activeStep,
+        businessStatus,
+        authInitialMode,
+        pendingContact,
+        openAuth,
+        openRegister,
+        goBackToLanding,
+        setPendingContact,
+        loginWithContact,
+        verifyOtp,
+        createBusiness,
+        invitePerson,
+        updatePersonRole,
+        removePerson,
+        createRole,
+        updateRole,
+        deleteRole,
+        updateBusiness,
+        installApp,
+        uninstallApp,
+        logout,
+        hasCapability,
+        getRoleById,
+      }}
+    >
       {children}
     </WorkspaceContext.Provider>
   );

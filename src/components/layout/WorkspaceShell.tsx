@@ -54,8 +54,8 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
   const navItems = [
     { id: 'dashboard' as const, label: 'Home', icon: LayoutDashboard },
     { id: 'apps' as const, label: 'Workspace', icon: LayoutGrid },
-    { id: 'people' as const, label: 'Team', icon: Users },
-    { id: 'roles' as const, label: 'Roles & Access', icon: Shield },
+    { id: 'people' as const, label: 'People', icon: Users },
+    { id: 'roles' as const, label: 'Access Levels', icon: Shield },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];
 
