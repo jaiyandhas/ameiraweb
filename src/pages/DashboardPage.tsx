@@ -1,20 +1,7 @@
 import React, { useMemo } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import type { ActivityEvent } from '../types';
-import {
-  Building2,
-  UserPlus,
-  Shield,
-  CheckCircle2,
-  Circle,
-  ArrowRight,
-  Users,
-  ShieldCheck,
-  Briefcase,
-  Store,
-  FileText,
-  Settings2,
-} from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 
 // ─── Relative timestamp helper ────────────────────────────────────────────────
 function relativeTime(isoString: string): string {
@@ -36,49 +23,44 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-// ─── Activity icon mapping ────────────────────────────────────────────────────
-function activityMeta(type: ActivityEvent['type']): {
-  Icon: React.FC<{ className?: string }>;
-  bg: string;
-  color: string;
-} {
+// ─── Activity indicator dot color ─────────────────────────────────────────────
+function activityDotColor(type: ActivityEvent['type']): string {
   switch (type) {
     case 'business_created':
-      return { Icon: Building2, bg: 'bg-zinc-100', color: 'text-zinc-700' };
+      return 'bg-zinc-900';
     case 'person_invited':
     case 'person_joined':
-      return { Icon: UserPlus, bg: 'bg-emerald-50', color: 'text-emerald-700' };
+      return 'bg-emerald-500';
     case 'role_created':
     case 'role_assigned':
-      return { Icon: ShieldCheck, bg: 'bg-blue-50', color: 'text-blue-700' };
+      return 'bg-blue-500';
     case 'settings_updated':
-      return { Icon: Settings2, bg: 'bg-amber-50', color: 'text-amber-700' };
+      return 'bg-amber-500';
     default:
-      return { Icon: FileText, bg: 'bg-zinc-100', color: 'text-zinc-500' };
+      return 'bg-zinc-400';
   }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface QuickActionCardProps {
-  icon: React.FC<{ className?: string }>;
   label: string;
   description: string;
   onClick: () => void;
 }
-const QuickActionCard: React.FC<QuickActionCardProps> = ({ icon: Icon, label, description, onClick }) => (
+
+const QuickActionCard: React.FC<QuickActionCardProps> = ({ label, description, onClick }) => (
   <button
     onClick={onClick}
-    className="group w-full text-left bg-white border border-zinc-200/80 rounded-2xl p-5 hover:border-zinc-400 hover:shadow-sm transition-all duration-150"
+    className="group w-full text-left bg-white border border-zinc-200/80 rounded-2xl p-5 hover:border-zinc-400 hover:shadow-sm transition-all duration-150 flex items-center justify-between gap-4"
   >
-    <div className="flex items-center justify-between">
-      <div className="h-9 w-9 rounded-xl bg-zinc-100 flex items-center justify-center group-hover:bg-zinc-900 transition-colors duration-150">
-        <Icon className="h-4 w-4 text-zinc-700 group-hover:text-white transition-colors duration-150" />
-      </div>
-      <ArrowRight className="h-4 w-4 text-zinc-300 group-hover:text-zinc-600 transition-colors duration-150" />
+    <div>
+      <p className="font-semibold text-zinc-900 text-sm group-hover:text-zinc-900 transition-colors">{label}</p>
+      <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{description}</p>
     </div>
-    <p className="font-semibold text-zinc-900 mt-3 text-sm">{label}</p>
-    <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{description}</p>
+    <div className="h-8 w-8 rounded-full bg-zinc-50 flex items-center justify-center shrink-0 group-hover:bg-zinc-900 group-hover:text-white transition-colors duration-150">
+      <ArrowRight className="h-4 w-4 text-zinc-400 group-hover:text-white transition-colors duration-150" />
+    </div>
   </button>
 );
 
@@ -88,13 +70,15 @@ interface SetupStepProps {
   actionLabel?: string;
   onAction?: () => void;
 }
+
 const SetupStep: React.FC<SetupStepProps> = ({ done, label, actionLabel, onAction }) => (
   <div className="flex items-center justify-between py-3 border-b border-zinc-100 last:border-0">
     <div className="flex items-center gap-3">
-      {done
-        ? <CheckCircle2 className="h-5 w-5 text-zinc-900 shrink-0" />
-        : <Circle className="h-5 w-5 text-zinc-300 shrink-0" />
-      }
+      <div className={`h-4 w-4 rounded-md flex items-center justify-center border transition-colors shrink-0 ${
+        done ? 'bg-zinc-900 border-zinc-900 text-white' : 'border-zinc-300 bg-white'
+      }`}>
+        {done && <Check className="h-3 w-3 stroke-[3]" />}
+      </div>
       <span className={`text-sm font-medium ${done ? 'text-zinc-400 line-through' : 'text-zinc-800'}`}>
         {label}
       </span>
@@ -135,7 +119,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   // ── Setup checklist ──────────────────────────────────────────────────────
   const hasInvitedAnyone = people.length > 1;
   const hasCreatedRole = customRoles > 0;
-  const hasUpdatedProfile = false; // future: track this
+  const hasUpdatedProfile = false;
 
   const setupSteps = useMemo(() => [
     { done: true, label: 'Create your workspace' },
@@ -171,32 +155,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {/* Activity Feed */}
           <div className="bg-white border border-zinc-200/80 rounded-3xl overflow-hidden">
-            <div className="px-6 pt-6 pb-4 border-b border-zinc-100">
-              <h2 className="text-base font-bold text-zinc-900">Today's Activity</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">Everything that happened in your workspace.</p>
+            <div className="px-6 pt-6 pb-4 border-b border-zinc-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-zinc-900">Today's Activity</h2>
+                <p className="text-xs text-zinc-400 mt-0.5">Everything that happened in your workspace.</p>
+              </div>
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="Live update" />
             </div>
 
             {activities.length === 0 ? (
               <div className="px-6 py-12 text-center">
-                <div className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center mx-auto mb-3">
-                  <Briefcase className="h-5 w-5 text-zinc-400" />
-                </div>
                 <p className="text-sm font-semibold text-zinc-700">Your workspace is ready.</p>
                 <p className="text-xs text-zinc-400 mt-1">Activity will appear here as your team gets started.</p>
               </div>
             ) : (
               <ul className="divide-y divide-zinc-100">
                 {activities.map(event => {
-                  const { Icon, bg, color } = activityMeta(event.type);
+                  const dotClass = activityDotColor(event.type);
                   return (
-                    <li key={event.id} className="flex items-center gap-4 px-6 py-4">
-                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${bg}`}>
-                        <Icon className={`h-4 w-4 ${color}`} />
-                      </div>
+                    <li key={event.id} className="flex items-center gap-4 px-6 py-4 hover:bg-zinc-50/50 transition-colors">
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-zinc-900 leading-snug">{event.title}</p>
                       </div>
-                      <span className="text-xs font-mono text-zinc-400 shrink-0 tabular-nums">
+                      <span className="text-xs text-zinc-400 shrink-0 tabular-nums font-mono">
                         {relativeTime(event.timestamp)}
                       </span>
                     </li>
@@ -208,27 +190,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {/* Workspace Overview */}
           <div className="bg-white border border-zinc-200/80 rounded-3xl p-6">
-            <h2 className="text-base font-bold text-zinc-900 mb-5">Workspace Overview</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1">
-                <div className="h-10 w-10 rounded-xl bg-zinc-100 flex items-center justify-center mb-1">
-                  <Users className="h-5 w-5 text-zinc-700" />
-                </div>
+            <h2 className="text-base font-bold text-zinc-900 mb-6">Workspace Overview</h2>
+            <div className="grid grid-cols-3 gap-6">
+              <div className="flex flex-col gap-1 border-r border-zinc-100 pr-4 last:border-0">
                 <p className="text-3xl font-extrabold tracking-tight text-zinc-900">{activeMembers}</p>
                 <p className="text-xs font-medium text-zinc-500">Active members</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <div className="h-10 w-10 rounded-xl bg-zinc-100 flex items-center justify-center mb-1">
-                  <Shield className="h-5 w-5 text-zinc-700" />
-                </div>
+              <div className="flex flex-col gap-1 border-r border-zinc-100 pr-4 last:border-0">
                 <p className="text-3xl font-extrabold tracking-tight text-zinc-900">{roles.length}</p>
                 <p className="text-xs font-medium text-zinc-500">Roles defined</p>
               </div>
               <div className="flex flex-col gap-1">
-                <div className="h-10 w-10 rounded-xl bg-zinc-100 flex items-center justify-center mb-1">
-                  <Store className="h-5 w-5 text-zinc-700" />
-                </div>
-                <p className="text-sm font-bold tracking-tight text-zinc-900 leading-snug mt-1">
+                <p className="text-lg sm:text-xl font-bold tracking-tight text-zinc-900 leading-tight mt-1">
                   {business?.createdAt
                     ? new Date(business.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—'}
@@ -247,19 +220,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <h2 className="text-base font-bold text-zinc-900 mb-4">Quick Actions</h2>
             <div className="flex flex-col gap-3">
               <QuickActionCard
-                icon={UserPlus}
                 label="Invite someone"
                 description="Add a team member to your workspace."
                 onClick={onNavigateInvite}
               />
               <QuickActionCard
-                icon={Shield}
                 label="Create a role"
                 description="Define what your team members can see and do."
                 onClick={onNavigateCreateRole}
               />
               <QuickActionCard
-                icon={Building2}
                 label="Business profile"
                 description="Update your business name and details."
                 onClick={() => onNavigate('settings')}
@@ -270,7 +240,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {/* Setup Progress — hidden when all done */}
           {!allSetupDone && (
             <div className="bg-white border border-zinc-200/80 rounded-3xl p-6">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-base font-bold text-zinc-900">Getting Started</h2>
                 <span className="text-xs font-semibold text-zinc-400">{completedSteps}/{setupSteps.length}</span>
               </div>
