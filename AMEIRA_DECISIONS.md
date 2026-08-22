@@ -331,6 +331,30 @@ Completely eliminates premature redirect flickers and tab-switch resets while en
 ### Future Considerations
 - Synchronize active workspace state via BroadcastChannel across concurrent browser tabs.
 
+---
+
+## ADR-013: Three-State Business Check Status (`loading` | `found` | `not_found`)
+
+### Problem
+On fresh page refreshes or hard reloads, client state initializes asynchronously. A binary boolean check (`hasBusiness ? <Dashboard> : <CreateBusiness>`) treated in-flight loading queries as "confirmed no business", causing the "Create your business" page to flash briefly before resolving to the Dashboard.
+
+### Options Considered
+1. **Binary Truthy/Falsy Check**: Treat missing/loading state as falsy `hasBusiness = false`, immediately rendering `<CreateBusinessPage>` while query is in flight.
+2. **Three-State Explicit Business Status (`loading` | `found` | `not_found`)**:
+   - `loading`: Initial state on mount and while Supabase queries are in flight. Render a lightweight loading screen.
+   - `found`: Query resolved, business exists. Render `<WorkspaceShell>` / Dashboard.
+   - `not_found`: Query resolved, confirmed no business exists. Render `<CreateBusinessPage>`.
+
+### Chosen Solution
+**Option 2: Three-State Explicit Business Status (`loading` | `found` | `not_found`)**.
+
+### Reason
+Guarantees that `<CreateBusinessPage>` is NEVER rendered while a query is in flight. On page refresh, the UI smoothly displays a lightweight loading screen until the business state is definitively resolved.
+
+### Future Considerations
+- Add skeleton placeholder view during initial workspace chunk hydration.
+
+
 
 
 

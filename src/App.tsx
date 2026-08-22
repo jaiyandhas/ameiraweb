@@ -21,7 +21,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ defa
 type WorkspaceTab = 'dashboard' | 'apps' | 'people' | 'roles' | 'settings';
 
 const AppContent: React.FC = () => {
-  const { activeStep, openAuth, openRegister, goBackToLanding, authInitialMode } = useWorkspace();
+  const { activeStep, businessStatus, openAuth, openRegister, goBackToLanding, authInitialMode } = useWorkspace();
 
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('dashboard');
   const [peopleSubView, setPeopleSubView] = useState<'list' | 'invite' | 'detail'>('list');
@@ -47,6 +47,11 @@ const AppContent: React.FC = () => {
     setRolesSubView('create');
   };
 
+  // If business check query is in flight, show lightweight loading screen instead of flashing CreateBusiness
+  if (businessStatus === 'loading' && activeStep !== 'landing' && activeStep !== 'login') {
+    return <LoadingScreen message="loading workspace..." />;
+  }
+
   return (
     <Suspense fallback={<LoadingScreen message="loading ameira..." />}>
       {activeStep === 'landing' && (
@@ -59,9 +64,11 @@ const AppContent: React.FC = () => {
 
       {activeStep === 'verify' && <VerifyPage />}
 
-      {activeStep === 'create-business' && <CreateBusinessPage />}
+      {activeStep === 'create-business' && businessStatus === 'not_found' && (
+        <CreateBusinessPage />
+      )}
 
-      {activeStep === 'workspace' && (
+      {(activeStep === 'workspace' || businessStatus === 'found') && (
         <WorkspaceShell currentTab={workspaceTab} onNavigate={handleNavigate}>
 
           {/* Workspace (Apps) */}

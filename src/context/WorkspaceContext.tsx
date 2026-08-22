@@ -12,6 +12,8 @@ import type {
 import { APP_REGISTRY } from '../features/apps/registry';
 import { supabase } from '../lib/supabase';
 
+export type BusinessCheckStatus = 'loading' | 'found' | 'not_found';
+
 interface WorkspaceContextType {
   user: UserSession | null;
   business: Business | null;
@@ -20,6 +22,7 @@ interface WorkspaceContextType {
   activities: ActivityEvent[];
   apps: WorkspaceApp[];
   activeStep: 'landing' | 'login' | 'verify' | 'create-business' | 'workspace';
+  businessStatus: BusinessCheckStatus;
   authInitialMode: 'login' | 'register';
   pendingContact: string;
 
@@ -54,6 +57,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [people, setPeople] = useState<Person[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [activeStep, setActiveStep] = useState<'landing' | 'login' | 'verify' | 'create-business' | 'workspace'>('landing');
+  const [businessStatus, setBusinessStatus] = useState<BusinessCheckStatus>('loading');
   const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [apps, setApps] = useState<WorkspaceApp[]>(APP_REGISTRY);
@@ -109,7 +113,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Only trigger create-business if the user has no business loaded in state or local storage
         setBusiness((currentBiz) => {
           if (!currentBiz) {
+            setBusinessStatus('not_found');
             setActiveStep('create-business');
+          } else {
+            setBusinessStatus('found');
+            setActiveStep('workspace');
           }
           return currentBiz;
         });
@@ -223,9 +231,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         })));
       }
 
+      setBusinessStatus('found');
       setActiveStep('workspace');
     } catch (err) {
       console.error('Error loading business data:', err);
+      setBusinessStatus('not_found');
     }
   }, []);
 
@@ -247,6 +257,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setBusiness(null);
         setPeople([]);
         setActivities([]);
+        setBusinessStatus('not_found');
         setActiveStep('landing');
       }
     });
@@ -402,6 +413,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       setBusiness(createdBiz);
+      setBusinessStatus('found');
       localStorage.setItem('ameira_business', JSON.stringify(createdBiz));
       localStorage.setItem('ameira_user', JSON.stringify({ userId: currentUserId, fullName: userFullName, emailOrPhone: userEmail }));
       setUser({
@@ -429,6 +441,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         createdAt: new Date().toISOString().split('T')[0],
       };
       setBusiness(fallbackBiz);
+      setBusinessStatus('found');
       setActiveStep('workspace');
       return { success: true };
     }
@@ -639,6 +652,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setBusiness(null);
     setPeople([]);
     setActivities([]);
+    setBusinessStatus('not_found');
     setActiveStep('landing');
   };
 
@@ -663,6 +677,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       activities,
       apps,
       activeStep,
+      businessStatus,
       authInitialMode,
       pendingContact,
       openAuth,
