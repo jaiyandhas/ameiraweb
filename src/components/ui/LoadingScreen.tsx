@@ -9,7 +9,7 @@ export const LoadingScreen: React.FC<{ message?: string }> = ({ message = 'loadi
         
         {/* Prominent Logo */}
         <img 
-          src="/ameiralogo.png" 
+          src="/ameiratransparent.png" 
           alt="Ameira Logo" 
           className="h-14 w-auto object-contain relative z-10"
         />

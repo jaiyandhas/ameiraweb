@@ -21,7 +21,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       <div className="hidden lg:flex lg:w-[44%] bg-zinc-900 text-white flex-col justify-between p-12 shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <img src="/ameiralogo.png" alt="Ameira" className="h-9 w-auto object-contain brightness-200" />
+          <img src="/ameiratransparent.png" alt="Ameira" className="h-10 w-auto object-contain brightness-200" />
           <span className="font-extrabold text-xl tracking-tight text-white">Ameira</span>
         </div>
 
@@ -72,7 +72,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12">
         {/* Mobile logo */}
         <div className="flex lg:hidden items-center gap-2 mb-8">
-          <img src="/ameiralogo.png" alt="Ameira" className="h-8 w-auto object-contain" />
+          <img src="/ameiratransparent.png" alt="Ameira" className="h-10 w-auto object-contain" />
           <span className="font-extrabold text-lg tracking-tight text-zinc-900">Ameira</span>
         </div>
 

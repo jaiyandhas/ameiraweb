@@ -69,6 +69,11 @@ function RequireNoBusiness({ children }: { children: React.ReactNode }) {
 function RedirectIfAuth({ children }: { children: React.ReactNode }) {
   const { user, businessStatus } = useWorkspace();
 
+  // While business status is in flight for an authenticating/authenticated user, show loading screen
+  if (businessStatus === 'loading' && user) {
+    return <LoadingScreen message="loading workspace..." />;
+  }
+
   if (user && businessStatus === 'found') {
     return <Navigate to="/dashboard" replace />;
   }

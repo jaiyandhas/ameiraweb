@@ -8,7 +8,7 @@ interface WordConfig {
 const WORD_CONFIGS: WordConfig[] = [
   {
     word: 'business',
-    gradientClass: 'from-zinc-900 via-zinc-600 to-zinc-900',
+    gradientClass: 'from-zinc-900 via-zinc-700 to-zinc-900',
   },
   {
     word: 'shop',
@@ -73,28 +73,30 @@ export const DynamicWordCycle: React.FC = () => {
   }
 
   return (
-    <div className="w-full flex flex-col items-center justify-center">
+    <div className="w-full flex flex-col items-center justify-center overflow-visible">
       {/* Accessible text for screen readers */}
       <span className="sr-only">Your business, one workspace.</span>
 
-      {/* Dynamic typography headline without pill box */}
+      {/* Dynamic typography headline with generous padding to prevent gradient text clipping */}
       <h1
         aria-hidden="true"
-        className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.08] text-center max-w-5xl"
+        className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.08] text-center max-w-5xl overflow-visible"
       >
         <span>Your </span>
-        <span className="inline-block relative text-left min-w-[4.4ch] sm:min-w-[4.6ch] align-bottom">
+        <span
+          className={`inline-block overflow-visible transition-all duration-300 ease-out transform ${
+            isTransitioning
+              ? 'opacity-0 translate-y-3 scale-95 filter blur-[2px]'
+              : 'opacity-100 translate-y-0 scale-100 filter blur-0'
+          }`}
+        >
           <span
-            className={`inline-block bg-gradient-to-r ${currentConfig.gradientClass} bg-clip-text text-transparent transition-all duration-300 ease-out transform ${
-              isTransitioning
-                ? 'opacity-0 translate-y-3 scale-95 filter blur-[2px]'
-                : 'opacity-100 translate-y-0 scale-100 filter blur-0'
-            }`}
+            className={`inline-block bg-gradient-to-r ${currentConfig.gradientClass} bg-clip-text text-transparent pr-2 pb-1 overflow-visible`}
           >
             {currentConfig.word}
           </span>
+          <span className="text-zinc-900 -ml-1">,</span>
         </span>
-        <span>,</span>
         <br />
         <span className="block mt-2">One workspace.</span>
       </h1>

@@ -64,6 +64,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Helper to load business data for a user
   const loadBusinessData = useCallback(async (userId: string, userEmail: string, userFullName: string) => {
+    setBusinessStatus('loading');
     try {
       setUser({
         userId,

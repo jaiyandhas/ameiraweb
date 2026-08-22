@@ -12,13 +12,13 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStart, onSignIn 
     <header className="sticky top-0 z-40 bg-zinc-50/90 backdrop-blur-md border-b border-zinc-200/60 transition-all">
       <div className="max-w-6xl w-full mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo Branding */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
           <img 
-            src="/ameira-logo.svg" 
-            alt="Ameira Workspace" 
-            className="h-8 w-8 object-contain" 
+            src="/ameiralogo.png" 
+            alt="Ameira" 
+            className="h-11 w-auto object-contain" 
           />
-          <span className="font-bold text-2xl tracking-tight text-zinc-900">
+          <span className="font-extrabold text-2xl tracking-tight text-zinc-900">
             Ameira
           </span>
         </div>

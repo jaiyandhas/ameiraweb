@@ -28,13 +28,13 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onStart }) => {
 
         {/* Footer Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-zinc-800/80 text-sm text-zinc-500">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <img 
-              src="/ameira-logo.svg" 
-              alt="Ameira Logo" 
-              className="h-7 w-7 object-contain filter invert" 
+              src="/ameiralogo-white.png" 
+              alt="Ameira" 
+              className="h-10 w-auto object-contain" 
             />
-            <span className="font-bold text-lg text-white">Ameira</span>
+            <span className="font-extrabold text-2xl tracking-tight text-white">Ameira</span>
           </div>
 
           <p className="text-zinc-400">

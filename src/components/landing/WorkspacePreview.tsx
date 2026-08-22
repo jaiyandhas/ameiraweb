@@ -60,7 +60,7 @@ export const WorkspacePreview: React.FC = () => {
           {/* Top Bar */}
           <div className="h-14 bg-zinc-900 text-white px-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/ameiralogo.png" alt="Ameira" className="h-7 w-auto object-contain brightness-200" />
+              <img src="/ameiratransparent.png" alt="Ameira" className="h-8 w-auto object-contain brightness-200" />
               <span className="font-bold text-base tracking-tight">Ameira</span>
               <span className="h-4 w-px bg-zinc-700 mx-1" />
               <div className="flex items-center gap-2 text-xs font-semibold px-2.5 py-1 rounded-md bg-zinc-800 text-zinc-300">

@@ -417,100 +417,82 @@ A URL-backed route is authoritative — the browser and user always know what pa
 
 ---
 
-## ADR-016: Dynamic Hero Word-Cycle & Brand Headline Alignment
+## ADR-016 (Consolidated): Dynamic Hero Typography & Brand Logo Integration
+
+> This entry consolidates what were originally ten separate entries (ADR-016 through ADR-025), most of which were incremental fixes and re-fixes of the same two features rather than distinct architectural decisions. Kept as one entry going forward; the original trial-and-error trail is preserved below for history but should be treated as superseded by this summary.
 
 ### Problem
-The landing page hero required dynamic noun representation (`business`, `shop`, `store`, `factory`, `workshop`) to reflect the multi-domain reach of Ameira for MSMEs without introducing busy, flashy animations or text layout reflows.
+The landing page hero needed to reflect Ameira's multi-domain reach (`business`, `shop`, `store`, `factory`, `workshop`) without static, one-size-fits-all copy — and without introducing layout jitter, glyph clipping, or busy animation that would violate the calm, minimal brand established in ADR-006/007. Separately, the brand logo needed to move from a placeholder to the official asset, cleanly integrated (transparent background, correct scale) across every surface that displays it.
 
-### Options Considered
-1. **Unconstrained Flashy Animations**: Rapid slide-in effects with variable text widths causing surrounding layout jumps.
-2. **Calm, Multi-Transition Word Cycle with Layout Stability**:
-   - Fixed word sequence: `business` &rarr; `shop` &rarr; `store` &rarr; `factory` &rarr; `workshop` &rarr; `business`.
-   - Distinct transition rotation: Soft cross-fade, upward slide (`translateY 8px` &rarr; `0`), downward slide (`translateY -8px` &rarr; `0`), and cross-fade loop.
-   - Fixed `min-width` container matching "workshop" to prevent headline text reflow.
-   - Screen reader accessibility (`aria-hidden="true"` with static `.sr-only` sentence) and `prefers-reduced-motion` compliance.
+### Final Chosen Solution
 
-### Chosen Solution
-**Option 2: Calm, Multi-Transition Word Cycle with Layout Stability**.
+**Hero typography:**
+- Pure typography, no pill/badge container (boxed pill styles from early iterations were tried and dropped as too heavy).
+- Dynamic gradient text roll (`bg-clip-text text-transparent`) on the cycling word.
+- Two-line layout: `Your {word},` / `One workspace.`
+- Comma renders coupled directly to the active word inside the same transition span, so punctuation travels naturally with the word instead of sitting at a fixed offset.
+- Line width fixed to the longest word in the set (`business`/`workshop`, 8 characters) so `text-center` doesn't cause the whole line to visibly shift as shorter/longer words cycle through.
+- `overflow-visible` enforced on ancestor containers with horizontal/vertical bleed padding on the gradient span, to prevent descenders/ascenders (`p`, `e`, `s`, etc.) from being clipped by the gradient's bounding box.
+- Respects `prefers-reduced-motion`; screen readers get a static `.sr-only` sentence instead of the animated word.
+
+**Logo:**
+- Official asset: transparent PNG, dark navy monogram (`#0F172A`) for light surfaces, with a white variant for any dark surfaces.
+- Deployed consistently across `LandingNavbar`, `LandingFooter`, `WorkspaceShell`, `AuthLayout`, `LoadingScreen`, and `WorkspacePreview`, each at a scale appropriate to that surface.
+- Background fully removed via alpha-channel extraction (isolating the actual navy stroke/dot pixels, discarding editor-artifact checkerboard pixels that an earlier export had baked in).
 
 ### Reason
-Reinforces the core brand statement *"Your {word}, one workspace."* with subtle elegance, zero layout reflow, and full accessibility.
+Delivers the intended calm, premium dynamic headline with zero layout instability, and gets the real brand mark consistently deployed and rendering cleanly (no baked-in backgrounds, no clipping, no artifacts) everywhere it appears.
+
+### Lesson for future entries
+Several of the superseded entries below record the same bug (comma/line-width jitter, logo background artifacts) being fixed three times each, because the prior fix wasn't verified in-browser before being logged as resolved. Going forward: implementation fixups and CSS-level corrections don't need their own ADR entry — reserve new entries for decisions with genuine alternatives and lasting consequences (architecture, schema, routing). Verify a fix actually holds before logging it as the chosen solution.
 
 ### Future Considerations
-- Complete Part 2 logo asset swap once transparent SVG export / dark-mode stroke variant is provided.
+- Bundle SVG vector paths for the logo for infinite-zoom sharpness.
+- Generate favicon ICO/WebP multi-resolution bundles from the transparent asset.
+- Allow custom domain/color theme presets during onboarding, if the product direction calls for it later.
 
 ---
 
-## ADR-017: Notion-Style Dynamic Pill Hero Headline Layout
+<details>
+<summary>Superseded entries (ADR-016 through ADR-025, original trial-and-error trail — kept for history)</summary>
 
-### Problem
-Line-level word cycling across a single horizontal line created excessive visual motion. To create a calm, premium brand experience aligned with modern tools like Notion, the dynamic noun needed a dedicated inline pill badge, and the secondary clause *"One workspace."* needed to be positioned cleanly on the second line.
+### ADR-016: Dynamic Hero Word-Cycle & Brand Headline Alignment (Superseded)
+Initial implementation of dynamic word-cycle on the hero.
 
-### Options Considered
-1. **Single-Line Inline Plain Text**: Animate words inline across a single long line, causing surrounding punctuation and clause movement.
-2. **Notion-Style Dynamic Pill Badge + Two-Line Headline**:
-   - Line 1: `Your [ ● word ]`
-   - Line 2: `One workspace.`
-   - Dynamic Pill Badge: Soft pastel themes (slate, amber, sky, emerald, indigo) with a preceding accent dot (`●`), smooth 500ms color morphing, and gentle 250ms opacity/scale transitions.
+### ADR-017: Notion-Style Dynamic Pill Hero Headline Layout (Superseded)
+Exploration of boxed pill badge enclosing the noun, dropped in favor of clean unboxed typography.
 
-### Chosen Solution
-**Option 2: Notion-Style Dynamic Pill Badge + Two-Line Headline**.
+### ADR-018: Stylish Minimalist Glassmorphic Dynamic Pill Badge (Superseded)
+Exploration of glassmorphic gradients within pill badge.
 
-### Reason
-Presents a calm, high-contrast, premium focal point. Concentrates all motion within a self-contained pill container without jittering surrounding page text.
+### ADR-019: Dynamic Typography Gradient Hero Headline & Vector Monogram Logo Mark (Superseded)
+Shifted back to pure typography with dynamic gradients.
 
-### Future Considerations
-- Add custom domain pill presets for user business categories during onboarding.
+### ADR-020: Stationary Comma Positioning & Brand PNG Logo Asset Retention (Superseded)
+Initial attempt at fixed offset comma positioning.
 
----
+### ADR-021: Zero-Jitter Invariant Line Length & Native PNG Logo Integration (Superseded)
+Extended character width to prevent text-center layout shift.
 
-## ADR-018: Stylish Minimalist Glassmorphic Dynamic Pill Badge
+### ADR-022: Dynamic Comma Alignment & Transparent High-Resolution Logo Scaling (Superseded)
+Connected comma directly to the dynamic word.
 
-### Problem
-Standard solid pastel badges looked too generic. The landing page required a unique, stylish, ultra-minimal visual identity that feels bespoke to Ameira without introducing busy page movement.
+### ADR-023: Transparent High-Resolution Logo Asset Deployment (Superseded)
+Initial transparent logo deployment.
 
-### Options Considered
-1. **Generic Flat Badges**: Flat pastel colors lacking depth or brand character.
-2. **Glassmorphic Gradient Badges with Glowing Accent Dots**:
-   - `business`: Sleek dark obsidian pill (`bg-zinc-900 text-white`) with glowing white indicator dot.
-   - `shop`: Warm amber frosted glass (`from-amber-500/10 via-amber-500/15`) with warm glowing dot.
-   - `store`: Cool metallic sky glass (`from-sky-500/10 via-blue-500/15`) with cyan glowing dot.
-   - `factory`: Botanical emerald glass (`from-emerald-500/10 via-teal-500/15`) with emerald glowing dot.
-   - `workshop`: Royal violet quartz (`from-violet-500/10 via-purple-500/15`) with violet glowing dot.
+### ADR-024: Pure Pixel Extraction for Monogram Logo & Dynamic Hero Typography (Superseded)
+Stripped fake baked-in checkerboard artifact using RGBA alpha thresholding.
 
-### Chosen Solution
-**Option 2: Glassmorphic Gradient Badges with Glowing Accent Dots**.
+### ADR-025: Gradient Bounding-Box Bleed & Glyph Clipping Fix (Superseded)
+Added horizontal bleed padding (`pr-2 pb-1`) to eliminate character cutoff on `p`, `e`, `s`.
 
-### Reason
-Combines radical minimalism with a unique, high-end aesthetic. Keeps motion contained within the pill badge while adding subtle glassmorphic depth.
+</details>
 
-### Future Considerations
-- Allow theme customization for user business badges inside settings.
 
----
 
-## ADR-019: Dynamic Typography Gradient Hero Headline & Vector Monogram Logo Mark
 
-### Problem
-Pill containers felt too boxy and restrictive on the main hero headline. The landing page required pure dynamic typography for the hero noun while keeping the logo updated across all application surfaces with scalable SVG vectors.
 
-### Options Considered
-1. **Pill-Enclosed Badges**: Boxed pill shapes enclosing the dynamic word.
-2. **Pure Typography Dynamic Gradient Roll + Monoline Vector Logo**:
-   - Headline: Pure typography with dynamic gradient text roll (`bg-clip-text text-transparent`) for `business`, `shop`, `store`, `factory`, `workshop`.
-   - Layout:
-     - Line 1: `Your {dynamic word},`
-     - Line 2: `One workspace.`
-   - Logo Asset: Vector monoline "A" monogram in dark navy (`#0F172A`) with a single filled accent dot (`/public/ameira-logo.svg` & `/public/favicon.svg`), updated across `LandingNavbar`, `LandingFooter`, `WorkspaceShell`, and favicon.
 
-### Chosen Solution
-**Option 2: Pure Typography Dynamic Gradient Roll + Monoline Vector Logo**.
-
-### Reason
-Delivers ultra-clean, unboxed typography animation while maintaining 100% layout stability across screen sizes and introducing the crisp new SVG monogram mark.
-
-### Future Considerations
-- Allow custom domain color themes to be selected during workspace setup.
 
 
 
