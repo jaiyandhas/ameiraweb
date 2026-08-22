@@ -165,8 +165,11 @@ async def update_access_level(
                     "SELECT id, name, is_preset, business_id FROM public.roles WHERE id = $1",
                     role_id
                 )
-                if not role or str(role["business_id"]) != business_id:
-                    raise HTTPException(status_code=404, detail="Access level not found in this business.")
+                if not role:
+                    raise HTTPException(status_code=404, detail="Access level not found.")
+
+                if role["business_id"] is not None and str(role["business_id"]) != business_id:
+                    raise HTTPException(status_code=403, detail="Access level does not belong to this business.")
 
                 # 2. Preset / Owner Guard
                 if role["is_preset"] or role["name"] == "Owner":
@@ -225,7 +228,7 @@ async def update_access_level(
             raise HTTPException(status_code=404, detail="Access level not found.")
 
         role = r_resp.json()[0]
-        if str(role.get("business_id")) != business_id:
+        if role.get("business_id") is not None and str(role.get("business_id")) != business_id:
             raise HTTPException(status_code=403, detail="Access level does not belong to this business.")
 
         if role.get("is_preset") or role.get("name") == "Owner":
@@ -301,8 +304,11 @@ async def delete_access_level(
                     "SELECT id, name, is_preset, business_id FROM public.roles WHERE id = $1",
                     role_id
                 )
-                if not role or str(role["business_id"]) != business_id:
-                    raise HTTPException(status_code=404, detail="Access level not found in this business.")
+                if not role:
+                    raise HTTPException(status_code=404, detail="Access level not found.")
+
+                if role["business_id"] is not None and str(role["business_id"]) != business_id:
+                    raise HTTPException(status_code=403, detail="Access level does not belong to this business.")
 
                 # 2. Preset Guard
                 if role["is_preset"] or role["name"] == "Owner":
@@ -353,7 +359,7 @@ async def delete_access_level(
             raise HTTPException(status_code=404, detail="Access level not found.")
 
         role = r_resp.json()[0]
-        if str(role.get("business_id")) != business_id:
+        if role.get("business_id") is not None and str(role.get("business_id")) != business_id:
             raise HTTPException(status_code=403, detail="Access level does not belong to this business.")
 
         if role.get("is_preset") or role.get("name") == "Owner":

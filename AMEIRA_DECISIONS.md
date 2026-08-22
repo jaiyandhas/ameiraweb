@@ -551,6 +551,36 @@ Combines the speed of direct database reads with bulletproof server-side capabil
 ### Future Considerations
 - Wire future business modules (Inventory stock adjustments, Order status transitions) through dedicated capability-enforced endpoints as they are introduced.
 
+---
+
+## ADR-028: Live Schema Audit, Local PostgreSQL Test Cluster, and Real-Database Test Verification
+
+### Problem
+A thorough audit revealed that while SQL migrations were authored locally (`supabase/migrations/20260822000000_core_schema.sql`), they had not yet been executed on the live remote Supabase project (returning 404 PGRST205 across all tables). Furthermore, early unit tests were passing using mocked responses rather than hitting actual Postgres transactions and foreign keys, masking edge cases like `NULL` business IDs on global presets and UUID format constraints on `people.user_id`.
+
+### Final Chosen Solution
+
+1. **Schema Finalization**:
+   - `supabase/migrations/20260822000000_core_schema.sql` finalized with all ADR-026 profile columns (`address`, `city`, `contact_email`, `contact_phone`, `currency`), `current_business_id()` security definer function, and full RLS policies.
+   - Seed data established for `workspace_apps`, `capabilities`, and baseline system presets (`Owner`, `Manager`, `Staff`).
+
+2. **Real Database Testing Harness**:
+   - Spun up an isolated local PostgreSQL 18 instance via `initdb` and `pg_ctl` on port 54332.
+   - Initialized `ameira_test` database with full schema, foreign keys, and RLS tables.
+   - Rewrote `backend/tests/test_enforcement.py` to connect via real `asyncpg` connection pools.
+
+3. **Bugs Uncovered & Fixed via Real Database Testing**:
+   - **Global Preset Role Verification Bug**: In `roles.py`, preset roles with `business_id IS NULL` were incorrectly failing tenant isolation checks with 404 instead of proceeding to the preset immutability guard (400). Fixed to explicitly handle `NULL` global business presets.
+   - **Foreign Key Enforcement**: Verified Postgres enforces `people.user_id REFERENCES auth.users(id)` and UUID format validations.
+   - **Email Match Enforcement**: Verified `POST /api/invites/{id}/accept` strictly rejects mismatched authenticated email addresses with 403 Forbidden.
+
+4. **Test Suite Results**:
+   - 15 out of 15 tests execute and pass in **0.56s** against real Postgres transactions, table inserts, and deletes.
+
+### Reason
+Ensures the capability enforcement layer and database schema are tested against genuine PostgreSQL behavior, locking down data integrity before any future business modules are added.
+
+
 
 
 

@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS public.businesses (
   name TEXT NOT NULL,
   logo_url TEXT,
   owner_id UUID, -- References auth.users(id)
+  address TEXT,
+  city TEXT,
+  contact_email TEXT,
+  contact_phone TEXT,
+  currency TEXT NOT NULL DEFAULT 'INR (₹)',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
