@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Checkbox } from '../ui/Checkbox';
 import { Alert } from '../ui/Alert';
 import { Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface RegisterFormProps {
   onSuccess: (fullName: string, contact: string) => void;
@@ -31,13 +32,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     agreedTerms?: string;
   }>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError('');
     const newErrors: typeof errors = {};
 
     if (!fullName.trim()) newErrors.fullName = 'Please enter your full name';
-    if (!contact.trim()) newErrors.contact = 'Please enter your email address or phone number';
+    if (!contact.trim()) newErrors.contact = 'Please enter your email address';
     if (!password) newErrors.password = 'Please create a password';
     else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters long';
     
@@ -51,11 +52,31 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
     setIsLoading(true);
 
-    // Simulate API registration call
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: contact.trim(),
+        password: password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        setGlobalError(error.message || 'Failed to create account. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        onSuccess(fullName.trim(), contact.trim());
+      }
+    } catch (err: any) {
+      setGlobalError(err?.message || 'An unexpected error occurred during account creation.');
+    } finally {
       setIsLoading(false);
-      onSuccess(fullName.trim(), contact.trim());
-    }, 800);
+    }
   };
 
   return (
@@ -76,8 +97,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       />
 
       <Input
-        label="Email Address or Mobile Number"
-        placeholder="e.g. ramesh@store.com or +91 98765 43210"
+        label="Email Address"
+        placeholder="e.g. ramesh@store.com"
         value={contact}
         onChange={(e) => {
           setContact(e.target.value);

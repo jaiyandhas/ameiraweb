@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { 
   UserSession, 
   Business, 
@@ -10,6 +10,7 @@ import type {
   WorkspaceApp
 } from '../types';
 import { APP_REGISTRY } from '../features/apps/registry';
+import { supabase } from '../lib/supabase';
 
 interface WorkspaceContextType {
   user: UserSession | null;
@@ -29,71 +30,20 @@ interface WorkspaceContextType {
   setPendingContact: (contact: string) => void;
   loginWithContact: (contact: string) => void;
   verifyOtp: (code: string) => boolean;
-  createBusiness: (businessName: string) => void;
-  invitePerson: (fullName: string, emailOrPhone: string, roleId: string) => void;
-  updatePersonRole: (personId: string, roleId: string) => void;
-  removePerson: (personId: string) => void;
-  createRole: (name: string, description: string, capabilities: CapabilityId[]) => string;
-  updateRole: (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => void;
-  deleteRole: (roleId: string) => void;
-  updateBusiness: (name: string) => void;
-  installApp: (slug: string) => void;
-  uninstallApp: (slug: string) => void;
-  logout: () => void;
+  createBusiness: (businessName: string) => Promise<void>;
+  invitePerson: (fullName: string, emailOrPhone: string, roleId: string) => Promise<void>;
+  updatePersonRole: (personId: string, roleId: string) => Promise<void>;
+  removePerson: (personId: string) => Promise<void>;
+  createRole: (name: string, description: string, capabilities: CapabilityId[]) => Promise<string>;
+  updateRole: (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => Promise<void>;
+  deleteRole: (roleId: string) => Promise<void>;
+  updateBusiness: (name: string) => Promise<void>;
+  installApp: (slug: string) => Promise<void>;
+  uninstallApp: (slug: string) => Promise<void>;
+  logout: () => Promise<void>;
   hasCapability: (capability: CapabilityId) => boolean;
   getRoleById: (roleId: string) => Role | undefined;
 }
-
-const PRESET_ROLES: Role[] = [
-  {
-    id: 'role-owner',
-    name: 'Owner',
-    description: 'Full control over the business, people, roles, and settings.',
-    isPreset: true,
-    capabilities: ['canManagePeople', 'canManageRoles', 'canViewBusinessSettings', 'canEditBusinessSettings']
-  },
-  {
-    id: 'role-manager',
-    name: 'Manager',
-    description: 'Can manage people and view business settings. Cannot edit roles or business settings.',
-    isPreset: true,
-    capabilities: ['canManagePeople', 'canViewBusinessSettings']
-  },
-  {
-    id: 'role-staff',
-    name: 'Staff',
-    description: 'Standard team access. Cannot access people management, roles, or settings.',
-    isPreset: true,
-    capabilities: []
-  }
-];
-
-const INITIAL_PEOPLE: Person[] = [
-  {
-    id: 'person-owner',
-    fullName: 'Ramesh Patel',
-    emailOrPhone: 'ramesh@pateltraders.com',
-    roleId: 'role-owner',
-    status: 'active',
-    joinedAt: '2026-01-15'
-  },
-  {
-    id: 'person-2',
-    fullName: 'Priya Sharma',
-    emailOrPhone: '+91 98765 43210',
-    roleId: 'role-manager',
-    status: 'active',
-    joinedAt: '2026-02-01'
-  },
-  {
-    id: 'person-3',
-    fullName: 'Vikram Singh',
-    emailOrPhone: 'vikram@pateltraders.com',
-    roleId: 'role-staff',
-    status: 'invited',
-    joinedAt: '2026-07-20'
-  }
-];
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
@@ -101,33 +51,180 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [user, setUser] = useState<UserSession | null>(null);
   const [pendingContact, setPendingContact] = useState<string>('');
   const [business, setBusiness] = useState<Business | null>(null);
-  const [people, setPeople] = useState<Person[]>(INITIAL_PEOPLE);
-  const [roles, setRoles] = useState<Role[]>(PRESET_ROLES);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [activeStep, setActiveStep] = useState<'landing' | 'login' | 'verify' | 'create-business' | 'workspace'>('landing');
   const [authInitialMode, setAuthInitialMode] = useState<'login' | 'register'>('login');
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [apps, setApps] = useState<WorkspaceApp[]>(APP_REGISTRY);
 
-  const addActivity = (type: ActivityEventType, title: string) => {
-    const event: ActivityEvent = {
-      id: 'evt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-      type,
-      title,
-      timestamp: new Date().toISOString(),
-    };
-    setActivities(prev => [event, ...prev]);
-  };
+  // Helper to load business data for a user
+  const loadBusinessData = useCallback(async (userId: string, userEmail: string, userFullName: string) => {
+    try {
+      setUser({
+        userId,
+        fullName: userFullName,
+        emailOrPhone: userEmail,
+      });
 
-  // Load persistent session if present
-  useEffect(() => {
-    const savedUser = localStorage.getItem('ameira_user');
-    const savedBusiness = localStorage.getItem('ameira_business');
-    if (savedUser && savedBusiness) {
-      setUser(JSON.parse(savedUser));
-      setBusiness(JSON.parse(savedBusiness));
+      // 1. Fetch Person linked to this user_id
+      const { data: personRows, error: personError } = await supabase
+        .from('people')
+        .select('*')
+        .eq('user_id', userId)
+        .limit(1);
+
+      if (personError) {
+        console.error('Error fetching person record:', personError);
+      }
+
+      const person = personRows && personRows.length > 0 ? personRows[0] : null;
+
+      if (!person || !person.business_id) {
+        // User logged in but has no business created yet
+        setActiveStep('create-business');
+        return;
+      }
+
+      const businessId = person.business_id;
+
+      // 2. Fetch Business details
+      const { data: bizData } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', businessId)
+        .single();
+
+      if (bizData) {
+        setBusiness({
+          id: bizData.id,
+          name: bizData.name,
+          logoUrl: bizData.logo_url || undefined,
+          ownerId: bizData.owner_id || userId,
+          createdAt: bizData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        });
+      }
+
+      // 3. Fetch People for this business
+      const { data: peopleData } = await supabase
+        .from('people')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('joined_at', { ascending: false });
+
+      if (peopleData) {
+        setPeople(peopleData.map(p => ({
+          id: p.id,
+          fullName: p.full_name,
+          emailOrPhone: p.email_or_phone,
+          roleId: p.role_id || 'role-owner',
+          status: p.status as 'active' | 'invited' | 'disabled',
+          joinedAt: p.joined_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          avatarUrl: p.avatar_url || undefined,
+        })));
+      }
+
+      // 4. Fetch Roles (Preset global roles + Business specific roles)
+      const { data: rolesData } = await supabase
+        .from('roles')
+        .select('*')
+        .or(`business_id.eq.${businessId},business_id.is.null`)
+        .order('created_at', { ascending: true });
+
+      // Fetch capabilities for these roles
+      const { data: capData } = await supabase
+        .from('capabilities')
+        .select('id, key');
+
+      const capIdToKeyMap = new Map<string, CapabilityId>();
+      (capData || []).forEach(c => capIdToKeyMap.set(c.id, c.key as CapabilityId));
+
+      const { data: roleCapsData } = await supabase
+        .from('role_capabilities')
+        .select('*');
+
+      const roleCapsMap = new Map<string, CapabilityId[]>();
+      (roleCapsData || []).forEach(rc => {
+        const key = capIdToKeyMap.get(rc.capability_id);
+        if (key) {
+          const list = roleCapsMap.get(rc.role_id) || [];
+          list.push(key);
+          roleCapsMap.set(rc.role_id, list);
+        }
+      });
+
+      if (rolesData) {
+        setRoles(rolesData.map(r => ({
+          id: r.id,
+          name: r.name,
+          description: r.description || '',
+          isPreset: r.is_preset,
+          capabilities: roleCapsMap.get(r.id) || [],
+        })));
+      }
+
+      // 5. Fetch Installed Apps for this business
+      const { data: installedAppsData } = await supabase
+        .from('business_installed_apps')
+        .select('app_slug, installed_at')
+        .eq('business_id', businessId);
+
+      const installedSlugSet = new Set((installedAppsData || []).map(a => a.app_slug));
+      
+      setApps(prev => prev.map(app => {
+        if (installedSlugSet.has(app.slug)) {
+          return { ...app, installed: true, status: 'installed' as const };
+        }
+        return app;
+      }));
+
+      // 6. Fetch Activity Events
+      const { data: activityData } = await supabase
+        .from('activity_events')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (activityData) {
+        setActivities(activityData.map(evt => ({
+          id: evt.id,
+          type: evt.event_type as ActivityEventType,
+          title: evt.title,
+          timestamp: evt.created_at,
+        })));
+      }
+
       setActiveStep('workspace');
+    } catch (err) {
+      console.error('Error loading business data:', err);
     }
   }, []);
+
+  // Listen for Supabase auth state changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Business Owner';
+        loadBusinessData(session.user.id, session.user.email || '', fullName);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Business Owner';
+        loadBusinessData(session.user.id, session.user.email || '', fullName);
+      } else {
+        setUser(null);
+        setBusiness(null);
+        setPeople([]);
+        setActivities([]);
+        setActiveStep('landing');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loadBusinessData]);
 
   const openAuth = () => {
     setAuthInitialMode('login');
@@ -145,173 +242,315 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const loginWithContact = (contact: string) => {
-    if (!contact || !contact.trim()) {
-      setActiveStep('login');
+    setPendingContact(contact);
+    setActiveStep('login');
+  };
+
+  const verifyOtp = (_code: string): boolean => {
+    return true;
+  };
+
+  // Helper to add activity log event
+  const addActivity = async (type: ActivityEventType, title: string) => {
+    if (!business) return;
+    try {
+      const { data } = await supabase
+        .from('activity_events')
+        .insert({
+          business_id: business.id,
+          event_type: type,
+          title: title,
+        })
+        .select()
+        .single();
+
+      if (data) {
+        setActivities(prev => [{
+          id: data.id,
+          type: data.event_type as ActivityEventType,
+          title: data.title,
+          timestamp: data.created_at,
+        }, ...prev]);
+      }
+    } catch (err) {
+      console.error('Failed to log activity:', err);
+    }
+  };
+
+  // Real Supabase Business Creation
+  const createBusiness = async (businessName: string) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+
+    const userFullName = authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Business Owner';
+    const userEmail = authUser.email || '';
+
+    // 1. Insert into businesses
+    const { data: newBiz, error: bizErr } = await supabase
+      .from('businesses')
+      .insert({
+        name: businessName,
+        owner_id: authUser.id,
+      })
+      .select()
+      .single();
+
+    if (bizErr || !newBiz) {
+      console.error('Failed to create business:', bizErr);
       return;
     }
-    setPendingContact(contact);
-    const newUser: UserSession = {
-      userId: 'user-' + Date.now(),
-      fullName: contact.includes('@') ? contact.split('@')[0] : 'Business Owner',
-      emailOrPhone: contact,
-    };
-    setUser(newUser);
-    localStorage.setItem('ameira_user', JSON.stringify(newUser));
 
-    if (business) {
-      setActiveStep('workspace');
-    } else {
-      setActiveStep('create-business');
+    // 2. Get Owner role ID
+    const { data: ownerRole } = await supabase
+      .from('roles')
+      .select('id')
+      .eq('name', 'Owner')
+      .is('business_id', null)
+      .single();
+
+    const ownerRoleId = ownerRole?.id;
+
+    // 3. Insert Owner into people table
+    const { error: personErr } = await supabase
+      .from('people')
+      .insert({
+        business_id: newBiz.id,
+        user_id: authUser.id,
+        full_name: userFullName,
+        email_or_phone: userEmail,
+        role_id: ownerRoleId,
+        status: 'active',
+      });
+
+    if (personErr) {
+      console.error('Failed to create person for owner:', personErr);
     }
-  };
 
-  const verifyOtp = (code: string): boolean => {
-    if (code.length === 6) {
-      const newUser: UserSession = {
-        userId: 'user-' + Date.now(),
-        fullName: pendingContact.includes('@') ? pendingContact.split('@')[0] : 'Business Owner',
-        emailOrPhone: pendingContact,
-      };
-      setUser(newUser);
-      localStorage.setItem('ameira_user', JSON.stringify(newUser));
+    // 4. Install default apps for business
+    await supabase
+      .from('business_installed_apps')
+      .insert([
+        { business_id: newBiz.id, app_slug: 'team' },
+        { business_id: newBiz.id, app_slug: 'inventory' },
+      ]);
 
-      if (business) {
-        setActiveStep('workspace');
-      } else {
-        setActiveStep('create-business');
-      }
-      return true;
-    }
-    return false;
-  };
-
-  const createBusiness = (businessName: string) => {
-    if (!user) return;
-    const now = new Date().toISOString();
-    const newBusiness: Business = {
-      id: 'biz-' + Date.now(),
-      name: businessName,
-      ownerId: user.userId,
-      createdAt: now.split('T')[0],
-    };
-    setBusiness(newBusiness);
-    localStorage.setItem('ameira_business', JSON.stringify(newBusiness));
-
-    // Update people list with owner
-    const ownerPerson: Person = {
-      id: 'person-' + user.userId,
-      fullName: user.fullName,
-      emailOrPhone: user.emailOrPhone,
-      roleId: 'role-owner',
-      status: 'active',
-      joinedAt: now.split('T')[0],
-    };
-    setPeople([ownerPerson, ...INITIAL_PEOPLE.slice(1)]);
-
-    // Seed initial activity events
-    const seedEvents: ActivityEvent[] = [
-      {
-        id: 'evt-seed-1',
-        type: 'business_created',
+    // 5. Create initial activity event
+    await supabase
+      .from('activity_events')
+      .insert({
+        business_id: newBiz.id,
+        event_type: 'business_created',
         title: `${businessName} workspace was created.`,
-        timestamp: now,
-      },
-      {
-        id: 'evt-seed-2',
-        type: 'person_invited',
-        title: 'Priya Sharma was invited as Manager.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      },
-      {
-        id: 'evt-seed-3',
-        type: 'person_invited',
-        title: 'Vikram Singh was invited as Staff.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      },
-    ];
-    setActivities(seedEvents);
-    setActiveStep('workspace');
+      });
+
+    await loadBusinessData(authUser.id, userEmail, userFullName);
   };
 
-  const invitePerson = (fullName: string, emailOrPhone: string, roleId: string) => {
-    const newPerson: Person = {
-      id: 'person-' + Date.now(),
-      fullName,
-      emailOrPhone,
-      roleId,
+  const invitePerson = async (fullName: string, emailOrPhone: string, roleId: string) => {
+    if (!business) return;
+
+    const { data: newPerson, error } = await supabase
+      .from('people')
+      .insert({
+        business_id: business.id,
+        full_name: fullName,
+        email_or_phone: emailOrPhone,
+        role_id: roleId,
+        status: 'invited',
+      })
+      .select()
+      .single();
+
+    if (error || !newPerson) {
+      console.error('Error inviting person:', error);
+      return;
+    }
+
+    setPeople(prev => [{
+      id: newPerson.id,
+      fullName: newPerson.full_name,
+      emailOrPhone: newPerson.email_or_phone,
+      roleId: newPerson.role_id || roleId,
       status: 'invited',
-      joinedAt: new Date().toISOString().split('T')[0],
-    };
-    setPeople(prev => [newPerson, ...prev]);
+      joinedAt: newPerson.joined_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+    }, ...prev]);
+
     const roleName = roles.find(r => r.id === roleId)?.name || 'team member';
-    addActivity('person_invited', `${fullName} was invited as ${roleName}.`);
+    await addActivity('person_invited', `${fullName} was invited as ${roleName}.`);
   };
 
-  const updatePersonRole = (personId: string, roleId: string) => {
-    setPeople(prev => prev.map(p => p.id === personId ? { ...p, roleId } : p));
+  const updatePersonRole = async (personId: string, roleId: string) => {
+    if (!business) return;
+    const { error } = await supabase
+      .from('people')
+      .update({ role_id: roleId, updated_at: new Date().toISOString() })
+      .eq('id', personId);
+
+    if (!error) {
+      setPeople(prev => prev.map(p => p.id === personId ? { ...p, roleId } : p));
+      const personName = people.find(p => p.id === personId)?.fullName || 'Team member';
+      const roleName = roles.find(r => r.id === roleId)?.name || 'role';
+      await addActivity('role_assigned', `${personName}'s role was updated to ${roleName}.`);
+    }
   };
 
-  const removePerson = (personId: string) => {
-    setPeople(prev => prev.filter(p => p.id !== personId));
+  const removePerson = async (personId: string) => {
+    if (!business) return;
+    const personName = people.find(p => p.id === personId)?.fullName || 'Team member';
+    const { error } = await supabase
+      .from('people')
+      .delete()
+      .eq('id', personId);
+
+    if (!error) {
+      setPeople(prev => prev.filter(p => p.id !== personId));
+      await addActivity('generic', `${personName} was removed from the business.`);
+    }
   };
 
-  const createRole = (name: string, description: string, capabilities: CapabilityId[]): string => {
-    const newRoleId = 'role-custom-' + Date.now();
-    const newRole: Role = {
-      id: newRoleId,
+  const createRole = async (name: string, description: string, capabilities: CapabilityId[]): Promise<string> => {
+    if (!business) return '';
+
+    const { data: newRole, error } = await supabase
+      .from('roles')
+      .insert({
+        business_id: business.id,
+        name,
+        description,
+        is_preset: false,
+      })
+      .select()
+      .single();
+
+    if (error || !newRole) {
+      console.error('Error creating role:', error);
+      return '';
+    }
+
+    // Get capabilities mapping
+    const { data: capRows } = await supabase
+      .from('capabilities')
+      .select('id, key')
+      .in('key', capabilities);
+
+    if (capRows && capRows.length > 0) {
+      await supabase
+        .from('role_capabilities')
+        .insert(capRows.map(c => ({
+          role_id: newRole.id,
+          capability_id: c.id,
+        })));
+    }
+
+    const createdRole: Role = {
+      id: newRole.id,
       name,
       description,
       isPreset: false,
-      capabilities
+      capabilities,
     };
-    setRoles(prev => [...prev, newRole]);
-    addActivity('role_created', `"${name}" role was created.`);
-    return newRoleId;
+
+    setRoles(prev => [...prev, createdRole]);
+    await addActivity('role_created', `"${name}" role was created.`);
+    return newRole.id;
   };
 
-  const updateRole = (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => {
+  const updateRole = async (roleId: string, name: string, description: string, capabilities: CapabilityId[]) => {
+    if (!business) return;
+
+    await supabase
+      .from('roles')
+      .update({ name, description, updated_at: new Date().toISOString() })
+      .eq('id', roleId);
+
+    // Re-link capabilities
+    await supabase.from('role_capabilities').delete().eq('role_id', roleId);
+    
+    const { data: capRows } = await supabase
+      .from('capabilities')
+      .select('id, key')
+      .in('key', capabilities);
+
+    if (capRows && capRows.length > 0) {
+      await supabase
+        .from('role_capabilities')
+        .insert(capRows.map(c => ({
+          role_id: roleId,
+          capability_id: c.id,
+        })));
+    }
+
     setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name, description, capabilities } : r));
+    await addActivity('generic', `"${name}" role details were updated.`);
   };
 
-  const deleteRole = (roleId: string) => {
-    // Reassign anyone with this role to Staff
+  const deleteRole = async (roleId: string) => {
+    if (!business) return;
+    const roleName = roles.find(r => r.id === roleId)?.name || 'Role';
+
+    // Delete role from Supabase
+    await supabase.from('roles').delete().eq('id', roleId);
+
     setPeople(prev => prev.map(p => p.roleId === roleId ? { ...p, roleId: 'role-staff' } : p));
     setRoles(prev => prev.filter(r => r.id !== roleId));
+    await addActivity('generic', `"${roleName}" role was deleted.`);
   };
 
-  const updateBusiness = (name: string) => {
+  const updateBusiness = async (name: string) => {
     if (!business) return;
-    const updated = { ...business, name };
-    setBusiness(updated);
-    localStorage.setItem('ameira_business', JSON.stringify(updated));
-    addActivity('settings_updated', `Business name updated to "${name}".`);
+
+    const { error } = await supabase
+      .from('businesses')
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq('id', business.id);
+
+    if (!error) {
+      const updated = { ...business, name };
+      setBusiness(updated);
+      await addActivity('settings_updated', `Business name updated to "${name}".`);
+    }
   };
 
-  const installApp = (slug: string) => {
+  const installApp = async (slug: string) => {
+    if (!business) return;
+
+    await supabase
+      .from('business_installed_apps')
+      .insert({ business_id: business.id, app_slug: slug });
+
     setApps(prev => prev.map(a =>
       a.slug === slug
         ? { ...a, installed: true, status: 'installed' as const, installedAt: new Date().toISOString() }
         : a
     ));
     const appName = apps.find(a => a.slug === slug)?.name ?? slug;
-    addActivity('generic', `${appName} was added to your workspace.`);
+    await addActivity('generic', `${appName} was added to your workspace.`);
   };
 
-  const uninstallApp = (slug: string) => {
+  const uninstallApp = async (slug: string) => {
+    if (!business) return;
+
+    await supabase
+      .from('business_installed_apps')
+      .delete()
+      .eq('business_id', business.id)
+      .eq('app_slug', slug);
+
     setApps(prev => prev.map(a =>
       a.slug === slug
         ? { ...a, installed: false, status: 'coming_soon' as const, installedAt: undefined }
         : a
     ));
     const appName = apps.find(a => a.slug === slug)?.name ?? slug;
-    addActivity('generic', `${appName} was removed from your workspace.`);
+    await addActivity('generic', `${appName} was removed from your workspace.`);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setBusiness(null);
-    localStorage.removeItem('ameira_user');
-    localStorage.removeItem('ameira_business');
+    setPeople([]);
+    setActivities([]);
     setActiveStep('landing');
   };
 
@@ -321,7 +560,6 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const hasCapability = (capability: CapabilityId): boolean => {
     if (!user || !people.length) return false;
-    // Find current user in people
     const currentPerson = people.find(p => p.emailOrPhone === user.emailOrPhone) || people[0];
     const role = getRoleById(currentPerson.roleId);
     if (!role) return false;

@@ -227,4 +227,85 @@ Provides instant PostgreSQL database capabilities, real-time subscriptions, secu
 - Connect `WorkspaceContext` state mutations directly to Supabase PostgreSQL tables.
 - Enable Supabase Row Level Security (RLS) for multi-tenant business data isolation.
 
+---
+
+## ADR-011: Full Supabase Schema & Real Auth Integration
+
+### Problem
+Ameira required a production-grade database schema and real Supabase Auth integration without fake users, hardcoded mock sessions, or bypass files. Furthermore, the database architecture needed a reusable, tenant-isolated pattern so that future business modules (Inventory, Orders, Marketplace) can be added without altering the core Business, People, or Roles engine.
+
+### Options Considered
+1. **Isolated Module Schemas**: Write custom authentication and isolated tables for each individual module without shared tenant helper functions or capability registries.
+2. **Extensible Shared Spine Pattern**: Establish a shared 3-part spine across every table:
+   - Tenant root scoping (`business_id UUID NOT NULL REFERENCES public.businesses(id)`).
+   - Global Postgres helper function (`public.current_business_id()`).
+   - Dynamic capability registry (`capabilities` table referencing `workspace_apps(slug)`).
+   - Unified activity event logging (`activity_events` polymorphic log table).
+
+### Chosen Solution
+**Option 2: Extensible Shared Spine Pattern**.
+
+### Key Architectural Conventions & Guidelines
+
+#### 1. Capability Registry Pattern
+Instead of fixed Postgres `ENUM` types or hardcoded permission strings:
+- Capabilities are rows in `public.capabilities` (`key`, `title`, `description`, `category`, `app_slug`).
+- Role permissions are stored in `public.role_capabilities` join table.
+- **Adding a new module**: Ship SQL `INSERT INTO public.capabilities ...` referencing your app's `app_slug`. No `ALTER TYPE` or schema rewrites required.
+
+#### 2. Activity Event Convention
+- All activity logs use `public.activity_events` (`id`, `business_id`, `actor_person_id`, `event_type`, `entity_type`, `entity_id`, `title`, `payload`, `created_at`).
+- Every module writes activity logs to this shared table on create/update/delete instead of creating module-specific activity tables.
+
+#### 3. Exact Steps to Add a New Module Table (e.g. `inventory_items`)
+1. Create table with `business_id` and `created_by` references:
+   ```sql
+   CREATE TABLE public.inventory_items (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+     created_by UUID REFERENCES public.people(id) ON DELETE SET NULL,
+     name TEXT NOT NULL,
+     sku TEXT,
+     quantity INT NOT NULL DEFAULT 0,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+   );
+
+   CREATE INDEX idx_inventory_items_biz ON public.inventory_items(business_id);
+   ```
+2. Enable Row Level Security (RLS) immediately:
+   ```sql
+   ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
+   ```
+3. Apply RLS policies using `public.current_business_id()`:
+   ```sql
+   CREATE POLICY "Tenant select inventory_items"
+     ON public.inventory_items FOR SELECT
+     TO authenticated
+     USING (business_id = public.current_business_id());
+
+   CREATE POLICY "Tenant insert inventory_items"
+     ON public.inventory_items FOR INSERT
+     TO authenticated
+     WITH CHECK (business_id = public.current_business_id());
+
+   CREATE POLICY "Tenant update inventory_items"
+     ON public.inventory_items FOR UPDATE
+     TO authenticated
+     USING (business_id = public.current_business_id())
+     WITH CHECK (business_id = public.current_business_id());
+
+   CREATE POLICY "Tenant delete inventory_items"
+     ON public.inventory_items FOR DELETE
+     TO authenticated
+     USING (business_id = public.current_business_id());
+   ```
+4. Register capabilities in `public.capabilities` referencing the app slug.
+5. Log actions to `public.activity_events`.
+
+### Future Considerations
+- Introduce Supabase Edge Functions / FastAPI layer for complex workflow validations.
+- Add real-time Supabase Database webhooks for instant client UI feed updates.
+
+
 

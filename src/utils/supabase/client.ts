@@ -13,18 +13,30 @@ const getEnv = (key: string): string => {
   return '';
 };
 
-export const supabaseUrl = 
-  getEnv('VITE_SUPABASE_URL') || 
-  getEnv('NEXT_PUBLIC_SUPABASE_URL') || 
-  'https://vxxlmonjqqrhmxcsnxhq.supabase.co';
+export const getSupabaseUrl = (): string => {
+  const url = getEnv('VITE_SUPABASE_URL') || getEnv('NEXT_PUBLIC_SUPABASE_URL');
+  if (!url) {
+    throw new Error(
+      "Missing Supabase Configuration: VITE_SUPABASE_URL environment variable is required. Please set it in your .env.local file."
+    );
+  }
+  return url;
+};
 
-export const supabaseKey = 
-  getEnv('VITE_SUPABASE_PUBLISHABLE_KEY') || 
-  getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || 
-  'sb_publishable_y4x9iB4TmtCjQDn2PuT4Ew_wCVrovPE';
+export const getSupabaseKey = (): string => {
+  const key = getEnv('VITE_SUPABASE_PUBLISHABLE_KEY') || getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || getEnv('VITE_SUPABASE_ANON_KEY');
+  if (!key) {
+    throw new Error(
+      "Missing Supabase Configuration: VITE_SUPABASE_PUBLISHABLE_KEY environment variable is required. Please set it in your .env.local file."
+    );
+  }
+  return key;
+};
 
 export const createClient = () => {
-  return createSupabaseClient(supabaseUrl, supabaseKey, {
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  return createSupabaseClient(url, key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,

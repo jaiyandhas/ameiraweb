@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Checkbox } from '../ui/Checkbox';
 import { Alert } from '../ui/Alert';
 import { Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
   onSuccess: (emailOrPhone: string) => void;
@@ -25,7 +26,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [globalError, setGlobalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ contact?: string; password?: string }>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError('');
     const errors: { contact?: string; password?: string } = {};
@@ -44,16 +45,26 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
     setIsLoading(true);
 
-    // Simulate authentication API request
-    setTimeout(() => {
-      setIsLoading(false);
-      // Demo validation check
-      if (password.length < 4) {
-        setGlobalError('Invalid contact credentials or password. Please try again.');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: contact.trim(),
+        password: password,
+      });
+
+      if (error) {
+        setGlobalError(error.message || 'Invalid credentials. Please check your details and try again.');
+        setIsLoading(false);
         return;
       }
-      onSuccess(contact.trim());
-    }, 800);
+
+      if (data.session) {
+        onSuccess(contact.trim());
+      }
+    } catch (err: any) {
+      setGlobalError(err?.message || 'An unexpected error occurred during sign in.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -61,8 +72,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       {globalError && <Alert type="error" message={globalError} />}
 
       <Input
-        label="Email Address or Mobile Number"
-        placeholder="e.g. ramesh@store.com or +91 98765 43210"
+        label="Email Address"
+        placeholder="e.g. ramesh@store.com"
         value={contact}
         onChange={(e) => {
           setContact(e.target.value);

@@ -1,1 +1,1 @@
-export { supabase, createClient, supabaseUrl, supabaseKey } from '../utils/supabase/client';
+export { supabase, createClient, getSupabaseUrl, getSupabaseKey } from '../utils/supabase/client';

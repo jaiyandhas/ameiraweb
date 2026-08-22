@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { supabaseUrl, supabaseKey } from "./client";
+import { getSupabaseUrl, getSupabaseKey } from "./client";
 
 export const createClient = () => {
-  return createSupabaseClient(supabaseUrl, supabaseKey);
+  return createSupabaseClient(getSupabaseUrl(), getSupabaseKey());
 };
