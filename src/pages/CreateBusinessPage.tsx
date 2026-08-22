@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -7,6 +8,8 @@ import { Building2, ArrowRight, Loader2 } from 'lucide-react';
 
 export const CreateBusinessPage: React.FC = () => {
   const { createBusiness } = useWorkspace();
+  const navigate = useNavigate();
+
   const [businessName, setBusinessName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,9 +26,13 @@ export const CreateBusinessPage: React.FC = () => {
 
     try {
       const result = await createBusiness(businessName.trim());
-      if (result && !result.success && result.error) {
+      if (result && result.success) {
+        navigate('/dashboard', { replace: true });
+      } else if (result && result.error) {
         setError(result.error);
         setIsLoading(false);
+      } else {
+        navigate('/dashboard', { replace: true });
       }
     } catch (err: any) {
       setError(err?.message || 'Failed to create business workspace. Please try again.');

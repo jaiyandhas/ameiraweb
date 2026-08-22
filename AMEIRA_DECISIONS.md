@@ -380,6 +380,42 @@ Improves code readability, component reusability, and isolates state/render conc
 ### Future Considerations
 - Allow individual feature modules (like `ActivityFeed`) to be embedded in sub-views (such as Person Detail or Settings).
 
+---
+
+## ADR-015: Real Route Separation for Onboarding & Workspace Screens (React Router)
+
+### Problem
+Ameira previously ran a single route (`/`) with screens like Create Business and Dashboard swapped in via client-side state (`activeStep`) rather than real URL navigation. The URL never changed regardless of which screen was showing. This was the root cause behind the refresh-flicker and tab-switch redirect bugs: with no URL to act as source of truth, every mount/refresh/focus event had to reconstruct "where the user is" from scratch via async queries.
+
+### Options Considered
+1. **Keep Single-Route State Machine, Add More Guards**: Continue patching `activeStep` logic with additional state layers to paper over timing races.
+2. **Real Route Separation via React Router**: Introduce actual routes (`/create-business`, `/dashboard`, `/people`, `/roles`, `/settings`) with route-level guards (`<RequireBusiness>`) that resolve business status *before* protected routes render, replacing the client-reconstructed `activeStep` state machine.
+
+### Chosen Solution
+**Option 2: Real Route Separation via React Router**.
+
+### Reason
+A URL-backed route is authoritative — the browser and user always know what page they are on. Refresh reloads exactly that page, and tab focus doesn't re-trigger a full "guess where I am" state reconstruction.
+
+### Key Architectural Implementation
+- **Routes Defined**:
+  - `/` &rarr; Landing Page
+  - `/login` & `/register` &rarr; Auth Page
+  - `/create-business` &rarr; Create Business Onboarding (wrapped in `<RequireNoBusiness>`)
+  - `/dashboard`, `/workspace`, `/people`, `/roles`, `/settings` &rarr; Protected Workspace (wrapped in `<RequireBusiness>`)
+- **Route Guards**:
+  - `RequireBusiness`: Checks `businessStatus`. Returns `<LoadingScreen>` while loading, redirects to `/login` if unauthenticated, redirects to `/create-business` if no business exists, and renders children when business is confirmed.
+  - `RequireNoBusiness`: Redirects authenticated users with a business directly to `/dashboard`.
+  - `RedirectIfAuth`: Redirects authenticated users from `/` or `/login` to `/dashboard` or `/create-business`.
+
+### What this does NOT change
+- `current_business_id()`, RLS policies, and the Supabase schema from ADR-011 are unaffected.
+- The three-state (`loading`/`found`/`not_found`) resolution logic from ADR-013 is preserved, relocated to the route guard.
+
+### Future Considerations
+- New modules (Inventory, Orders, Marketplace) will plug directly into their own routes (`/inventory`, `/orders`) wrapped in `<RequireBusiness>`.
+
+
 
 
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { LayoutDashboard, LayoutGrid, Users, Shield, Settings, LogOut, Building2 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
@@ -7,16 +8,48 @@ type WorkspaceTab = 'dashboard' | 'apps' | 'people' | 'roles' | 'settings';
 
 interface WorkspaceShellProps {
   children: React.ReactNode;
-  currentTab: WorkspaceTab;
-  onNavigate: (tab: WorkspaceTab) => void;
 }
 
-export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
-  children,
-  currentTab,
-  onNavigate
-}) => {
+export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
   const { business, user, logout } = useWorkspace();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const getActiveTab = (): WorkspaceTab => {
+    const path = location.pathname;
+    if (path.startsWith('/workspace')) return 'apps';
+    if (path.startsWith('/people')) return 'people';
+    if (path.startsWith('/roles')) return 'roles';
+    if (path.startsWith('/settings')) return 'settings';
+    return 'dashboard';
+  };
+
+  const currentTab = getActiveTab();
+
+  const handleNavClick = (tab: WorkspaceTab) => {
+    switch (tab) {
+      case 'dashboard':
+        navigate('/dashboard');
+        break;
+      case 'apps':
+        navigate('/workspace');
+        break;
+      case 'people':
+        navigate('/people');
+        break;
+      case 'roles':
+        navigate('/roles');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   const navItems = [
     { id: 'dashboard' as const, label: 'Home', icon: LayoutDashboard },
@@ -31,7 +64,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
       {/* Top Header */}
       <header className="h-16 bg-white border-b border-zinc-200/80 px-6 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
             <img src="/ameiralogo.png" alt="Ameira" className="h-9 w-auto object-contain" />
             <span className="font-bold text-xl tracking-tight text-zinc-900 hidden sm:inline">
               Ameira
@@ -58,7 +91,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                 <p className="text-xs text-zinc-500">{user.emailOrPhone}</p>
               </div>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 title="Sign Out"
                 className="p-2.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-colors"
               >
@@ -81,7 +114,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
                 return (
                   <button
                     key={item.id}
-                    onClick={() => onNavigate(item.id)}
+                    onClick={() => handleNavClick(item.id)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all text-left ${
                       isActive
                         ? 'bg-zinc-900 text-white shadow-sm'
@@ -105,7 +138,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => onNavigate(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium ${
                   isActive ? 'text-zinc-900 font-bold' : 'text-zinc-500'
                 }`}
