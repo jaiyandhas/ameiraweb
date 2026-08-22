@@ -415,6 +415,31 @@ A URL-backed route is authoritative — the browser and user always know what pa
 ### Future Considerations
 - New modules (Inventory, Orders, Marketplace) will plug directly into their own routes (`/inventory`, `/orders`) wrapped in `<RequireBusiness>`.
 
+---
+
+## ADR-016: Dynamic Hero Word-Cycle & Brand Headline Alignment
+
+### Problem
+The landing page hero required dynamic noun representation (`business`, `shop`, `store`, `factory`, `workshop`) to reflect the multi-domain reach of Ameira for MSMEs without introducing busy, flashy animations or text layout reflows.
+
+### Options Considered
+1. **Unconstrained Flashy Animations**: Rapid slide-in effects with variable text widths causing surrounding layout jumps.
+2. **Calm, Multi-Transition Word Cycle with Layout Stability**:
+   - Fixed word sequence: `business` &rarr; `shop` &rarr; `store` &rarr; `factory` &rarr; `workshop` &rarr; `business`.
+   - Distinct transition rotation: Soft cross-fade, upward slide (`translateY 8px` &rarr; `0`), downward slide (`translateY -8px` &rarr; `0`), and cross-fade loop.
+   - Fixed `min-width` container matching "workshop" to prevent headline text reflow.
+   - Screen reader accessibility (`aria-hidden="true"` with static `.sr-only` sentence) and `prefers-reduced-motion` compliance.
+
+### Chosen Solution
+**Option 2: Calm, Multi-Transition Word Cycle with Layout Stability**.
+
+### Reason
+Reinforces the core brand statement *"Your {word}, one workspace."* with subtle elegance, zero layout reflow, and full accessibility.
+
+### Future Considerations
+- Complete Part 2 logo asset swap once transparent SVG export / dark-mode stroke variant is provided.
+
+
 
 
 

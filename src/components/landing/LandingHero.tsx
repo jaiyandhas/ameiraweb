@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '../ui/Button';
 import { ArrowRight, Play, CheckCircle2 } from 'lucide-react';
+import { DynamicWordCycle } from './DynamicWordCycle';
 
 interface LandingHeroProps {
   onStart: () => void;
@@ -10,11 +11,8 @@ interface LandingHeroProps {
 export const LandingHero: React.FC<LandingHeroProps> = ({ onStart, onWatchDemo }) => {
   return (
     <section className="pt-16 pb-20 sm:pt-24 sm:pb-32 max-w-5xl mx-auto px-6 text-center flex flex-col items-center">
-      {/* Brand Headline */}
-      <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.05] max-w-4xl">
-        Your business.<br />
-        One workspace.
-      </h1>
+      {/* Brand Headline with Dynamic Word Cycle */}
+      <DynamicWordCycle />
 
       {/* Supporting Paragraph */}
       <p className="text-xl sm:text-2xl text-zinc-600 mt-8 max-w-2xl leading-relaxed font-normal">
