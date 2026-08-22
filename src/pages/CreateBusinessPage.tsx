@@ -2,20 +2,35 @@ import React, { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Building2, ArrowRight } from 'lucide-react';
+import { Alert } from '../components/ui/Alert';
+import { Building2, ArrowRight, Loader2 } from 'lucide-react';
 
 export const CreateBusinessPage: React.FC = () => {
   const { createBusiness } = useWorkspace();
   const [businessName, setBusinessName] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     if (!businessName.trim()) {
       setError('Please enter your business name');
       return;
     }
-    createBusiness(businessName.trim());
+
+    setIsLoading(true);
+
+    try {
+      const result = await createBusiness(businessName.trim());
+      if (result && !result.success && result.error) {
+        setError(result.error);
+        setIsLoading(false);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create business workspace. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,6 +50,8 @@ export const CreateBusinessPage: React.FC = () => {
 
         <div className="bg-white border border-zinc-200/80 p-8 rounded-2xl shadow-sm">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {error && <Alert type="error" message={error} />}
+
             <Input
               label="Business Name"
               placeholder="e.g. Apex Hardware & General Store"
@@ -44,12 +61,22 @@ export const CreateBusinessPage: React.FC = () => {
                 if (error) setError('');
               }}
               error={error}
+              disabled={isLoading}
               autoFocus
             />
 
-            <Button type="submit" size="lg" fullWidth>
-              Create Business Workspace
-              <ArrowRight className="h-5 w-5" />
+            <Button type="submit" size="lg" fullWidth disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Creating Workspace...
+                </>
+              ) : (
+                <>
+                  Create Business Workspace
+                  <ArrowRight className="h-5 w-5" />
+                </>
+              )}
             </Button>
           </form>
         </div>
