@@ -307,5 +307,30 @@ Instead of fixed Postgres `ENUM` types or hardcoded permission strings:
 - Introduce Supabase Edge Functions / FastAPI layer for complex workflow validations.
 - Add real-time Supabase Database webhooks for instant client UI feed updates.
 
+---
+
+## ADR-012: Multi-Layer Business Tenant Resolution & State Protection
+
+### Problem
+When users switched browser tabs or window focus, Supabase Auth emitted background `TOKEN_REFRESHED` events. If the `people` table query was in-flight or returned empty before session hydration completed, `loadBusinessData` prematurely defaulted `activeStep` to `'create-business'`, kicking authenticated users back to the "Create your business" onboarding screen.
+
+### Options Considered
+1. **Single-Query Lookup with False Default**: Rely solely on `people.user_id` query, immediately resetting step to `'create-business'` if empty.
+2. **Multi-Layer Business Tenant Resolution with State Guard**:
+   - Query `public.people` by `user_id`.
+   - Fallback 1: Query `public.businesses` by `owner_id`.
+   - Fallback 2: Read `localStorage` cached business metadata.
+   - State Guard: Never override active `workspace` state to `'create-business'` if an active business is already loaded in React state or localStorage.
+
+### Chosen Solution
+**Option 2: Multi-Layer Business Tenant Resolution with State Guard**.
+
+### Reason
+Completely eliminates premature redirect flickers and tab-switch resets while ensuring real user business identity is immediately resolved across multiple fallbacks.
+
+### Future Considerations
+- Synchronize active workspace state via BroadcastChannel across concurrent browser tabs.
+
+
 
 

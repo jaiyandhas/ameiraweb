@@ -79,14 +79,42 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       const person = personRows && personRows.length > 0 ? personRows[0] : null;
+      let businessId = person?.business_id;
 
-      if (!person || !person.business_id) {
-        // User logged in but has no business created yet
-        setActiveStep('create-business');
-        return;
+      // Fallback 1: Check businesses table by owner_id
+      if (!businessId) {
+        const { data: ownedBiz } = await supabase
+          .from('businesses')
+          .select('id')
+          .eq('owner_id', userId)
+          .limit(1);
+
+        if (ownedBiz && ownedBiz.length > 0) {
+          businessId = ownedBiz[0].id;
+        }
       }
 
-      const businessId = person.business_id;
+      // Fallback 2: Check localStorage
+      if (!businessId) {
+        const savedBiz = localStorage.getItem('ameira_business');
+        if (savedBiz) {
+          try {
+            const parsed = JSON.parse(savedBiz);
+            if (parsed?.id) businessId = parsed.id;
+          } catch {}
+        }
+      }
+
+      if (!businessId) {
+        // Only trigger create-business if the user has no business loaded in state or local storage
+        setBusiness((currentBiz) => {
+          if (!currentBiz) {
+            setActiveStep('create-business');
+          }
+          return currentBiz;
+        });
+        return;
+      }
 
       // 2. Fetch Business details
       const { data: bizData } = await supabase
@@ -374,6 +402,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       setBusiness(createdBiz);
+      localStorage.setItem('ameira_business', JSON.stringify(createdBiz));
+      localStorage.setItem('ameira_user', JSON.stringify({ userId: currentUserId, fullName: userFullName, emailOrPhone: userEmail }));
       setUser({
         userId: currentUserId,
         fullName: userFullName,
