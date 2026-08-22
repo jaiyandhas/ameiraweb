@@ -439,6 +439,30 @@ Reinforces the core brand statement *"Your {word}, one workspace."* with subtle 
 ### Future Considerations
 - Complete Part 2 logo asset swap once transparent SVG export / dark-mode stroke variant is provided.
 
+---
+
+## ADR-017: Notion-Style Dynamic Pill Hero Headline Layout
+
+### Problem
+Line-level word cycling across a single horizontal line created excessive visual motion. To create a calm, premium brand experience aligned with modern tools like Notion, the dynamic noun needed a dedicated inline pill badge, and the secondary clause *"One workspace."* needed to be positioned cleanly on the second line.
+
+### Options Considered
+1. **Single-Line Inline Plain Text**: Animate words inline across a single long line, causing surrounding punctuation and clause movement.
+2. **Notion-Style Dynamic Pill Badge + Two-Line Headline**:
+   - Line 1: `Your [ ● word ]`
+   - Line 2: `One workspace.`
+   - Dynamic Pill Badge: Soft pastel themes (slate, amber, sky, emerald, indigo) with a preceding accent dot (`●`), smooth 500ms color morphing, and gentle 250ms opacity/scale transitions.
+
+### Chosen Solution
+**Option 2: Notion-Style Dynamic Pill Badge + Two-Line Headline**.
+
+### Reason
+Presents a calm, high-contrast, premium focal point. Concentrates all motion within a self-contained pill container without jittering surrounding page text.
+
+### Future Considerations
+- Add custom domain pill presets for user business categories during onboarding.
+
+
 
 
 
