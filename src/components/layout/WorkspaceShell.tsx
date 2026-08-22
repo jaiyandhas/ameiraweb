@@ -65,7 +65,7 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
       <header className="h-16 bg-white border-b border-zinc-200/80 px-6 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <img src="/ameiralogo.png" alt="Ameira" className="h-9 w-auto object-contain" />
+            <img src="/ameira-logo.svg" alt="Ameira" className="h-7 w-7 object-contain" />
             <span className="font-bold text-xl tracking-tight text-zinc-900 hidden sm:inline">
               Ameira
             </span>

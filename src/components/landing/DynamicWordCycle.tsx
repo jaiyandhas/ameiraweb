@@ -2,47 +2,29 @@ import React, { useState, useEffect } from 'react';
 
 interface WordConfig {
   word: string;
-  pillBg: string;
-  pillBorder: string;
-  textColor: string;
-  dotBg: string;
+  gradientClass: string;
 }
 
 const WORD_CONFIGS: WordConfig[] = [
   {
     word: 'business',
-    pillBg: 'bg-zinc-100',
-    pillBorder: 'border-zinc-300/80',
-    textColor: 'text-zinc-900',
-    dotBg: 'bg-zinc-800',
+    gradientClass: 'from-zinc-900 via-zinc-600 to-zinc-900',
   },
   {
     word: 'shop',
-    pillBg: 'bg-amber-100/80',
-    pillBorder: 'border-amber-300/80',
-    textColor: 'text-amber-950',
-    dotBg: 'bg-amber-500',
+    gradientClass: 'from-amber-600 via-orange-600 to-amber-700',
   },
   {
     word: 'store',
-    pillBg: 'bg-sky-100/80',
-    pillBorder: 'border-sky-300/80',
-    textColor: 'text-sky-950',
-    dotBg: 'bg-sky-500',
+    gradientClass: 'from-sky-600 via-blue-600 to-indigo-600',
   },
   {
     word: 'factory',
-    pillBg: 'bg-emerald-100/80',
-    pillBorder: 'border-emerald-300/80',
-    textColor: 'text-emerald-950',
-    dotBg: 'bg-emerald-500',
+    gradientClass: 'from-emerald-600 via-teal-600 to-emerald-700',
   },
   {
     word: 'workshop',
-    pillBg: 'bg-indigo-100/80',
-    pillBorder: 'border-indigo-300/80',
-    textColor: 'text-indigo-950',
-    dotBg: 'bg-indigo-500',
+    gradientClass: 'from-indigo-600 via-purple-600 to-violet-700',
   },
 ];
 
@@ -63,7 +45,7 @@ export const DynamicWordCycle: React.FC = () => {
   useEffect(() => {
     if (reducedMotion) return;
 
-    // Cycle word every 3 seconds
+    // Cycle word every 2.8 seconds
     const interval = setInterval(() => {
       setIsTransitioning(true);
 
@@ -71,7 +53,7 @@ export const DynamicWordCycle: React.FC = () => {
         setIndex((prevIndex) => (prevIndex + 1) % WORD_CONFIGS.length);
         setIsTransitioning(false);
       }, 250);
-    }, 3000);
+    }, 2800);
 
     return () => clearInterval(interval);
   }, [reducedMotion]);
@@ -81,14 +63,10 @@ export const DynamicWordCycle: React.FC = () => {
   if (reducedMotion) {
     return (
       <div className="w-full flex flex-col items-center justify-center">
-        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.15] text-center max-w-4xl">
-          <span>Your </span>
-          <span className="inline-flex items-center gap-2.5 sm:gap-3.5 px-4 py-1.5 sm:px-6 sm:py-2.5 rounded-full bg-zinc-100 border border-zinc-300/80 text-zinc-900 align-middle my-1">
-            <span className="h-3 w-3 sm:h-4 sm:w-4 rounded-full bg-zinc-800 shrink-0" />
-            <span>business</span>
-          </span>
+        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.08] text-center max-w-4xl">
+          Your business,
           <br />
-          <span>One workspace.</span>
+          <span className="block mt-2">One workspace.</span>
         </h1>
       </div>
     );
@@ -99,28 +77,24 @@ export const DynamicWordCycle: React.FC = () => {
       {/* Accessible text for screen readers */}
       <span className="sr-only">Your business, one workspace.</span>
 
-      {/* Visual Notion-style animated headline */}
+      {/* Dynamic typography headline without pill box */}
       <h1
         aria-hidden="true"
-        className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.15] text-center max-w-5xl"
+        className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-zinc-900 leading-[1.08] text-center max-w-5xl"
       >
         <span>Your </span>
-        <span
-          className={`inline-flex items-center gap-2.5 sm:gap-3.5 px-4 py-1 sm:px-6 sm:py-2 rounded-full border align-middle transition-all duration-500 ease-in-out my-1 ${currentConfig.pillBg} ${currentConfig.pillBorder} ${currentConfig.textColor}`}
-        >
+        <span className="inline-block relative text-left min-w-[4.4ch] sm:min-w-[4.6ch] align-bottom">
           <span
-            className={`h-3 w-3 sm:h-4 sm:w-4 rounded-full transition-colors duration-500 shrink-0 ${currentConfig.dotBg}`}
-          />
-          <span
-            className={`inline-block transition-all duration-250 ease-out transform ${
+            className={`inline-block bg-gradient-to-r ${currentConfig.gradientClass} bg-clip-text text-transparent transition-all duration-300 ease-out transform ${
               isTransitioning
-                ? 'opacity-0 scale-95'
-                : 'opacity-100 scale-100'
+                ? 'opacity-0 translate-y-3 scale-95 filter blur-[2px]'
+                : 'opacity-100 translate-y-0 scale-100 filter blur-0'
             }`}
           >
             {currentConfig.word}
           </span>
         </span>
+        <span>,</span>
         <br />
         <span className="block mt-2">One workspace.</span>
       </h1>

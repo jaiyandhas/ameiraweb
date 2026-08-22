@@ -30,9 +30,9 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onStart }) => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-zinc-800/80 text-sm text-zinc-500">
           <div className="flex items-center gap-3">
             <img 
-              src="/ameiralogo.png" 
+              src="/ameira-logo.svg" 
               alt="Ameira Logo" 
-              className="h-8 w-auto object-contain brightness-200" 
+              className="h-7 w-7 object-contain filter invert" 
             />
             <span className="font-bold text-lg text-white">Ameira</span>
           </div>

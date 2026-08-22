@@ -14,9 +14,9 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({ onStart, onSignIn 
         {/* Logo Branding */}
         <div className="flex items-center gap-3">
           <img 
-            src="/ameiralogo.png" 
-            alt="Ameira Operating System for MSMEs" 
-            className="h-10 w-auto object-contain" 
+            src="/ameira-logo.svg" 
+            alt="Ameira Workspace" 
+            className="h-8 w-8 object-contain" 
           />
           <span className="font-bold text-2xl tracking-tight text-zinc-900">
             Ameira

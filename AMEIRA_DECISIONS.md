@@ -462,6 +462,58 @@ Presents a calm, high-contrast, premium focal point. Concentrates all motion wit
 ### Future Considerations
 - Add custom domain pill presets for user business categories during onboarding.
 
+---
+
+## ADR-018: Stylish Minimalist Glassmorphic Dynamic Pill Badge
+
+### Problem
+Standard solid pastel badges looked too generic. The landing page required a unique, stylish, ultra-minimal visual identity that feels bespoke to Ameira without introducing busy page movement.
+
+### Options Considered
+1. **Generic Flat Badges**: Flat pastel colors lacking depth or brand character.
+2. **Glassmorphic Gradient Badges with Glowing Accent Dots**:
+   - `business`: Sleek dark obsidian pill (`bg-zinc-900 text-white`) with glowing white indicator dot.
+   - `shop`: Warm amber frosted glass (`from-amber-500/10 via-amber-500/15`) with warm glowing dot.
+   - `store`: Cool metallic sky glass (`from-sky-500/10 via-blue-500/15`) with cyan glowing dot.
+   - `factory`: Botanical emerald glass (`from-emerald-500/10 via-teal-500/15`) with emerald glowing dot.
+   - `workshop`: Royal violet quartz (`from-violet-500/10 via-purple-500/15`) with violet glowing dot.
+
+### Chosen Solution
+**Option 2: Glassmorphic Gradient Badges with Glowing Accent Dots**.
+
+### Reason
+Combines radical minimalism with a unique, high-end aesthetic. Keeps motion contained within the pill badge while adding subtle glassmorphic depth.
+
+### Future Considerations
+- Allow theme customization for user business badges inside settings.
+
+---
+
+## ADR-019: Dynamic Typography Gradient Hero Headline & Vector Monogram Logo Mark
+
+### Problem
+Pill containers felt too boxy and restrictive on the main hero headline. The landing page required pure dynamic typography for the hero noun while keeping the logo updated across all application surfaces with scalable SVG vectors.
+
+### Options Considered
+1. **Pill-Enclosed Badges**: Boxed pill shapes enclosing the dynamic word.
+2. **Pure Typography Dynamic Gradient Roll + Monoline Vector Logo**:
+   - Headline: Pure typography with dynamic gradient text roll (`bg-clip-text text-transparent`) for `business`, `shop`, `store`, `factory`, `workshop`.
+   - Layout:
+     - Line 1: `Your {dynamic word},`
+     - Line 2: `One workspace.`
+   - Logo Asset: Vector monoline "A" monogram in dark navy (`#0F172A`) with a single filled accent dot (`/public/ameira-logo.svg` & `/public/favicon.svg`), updated across `LandingNavbar`, `LandingFooter`, `WorkspaceShell`, and favicon.
+
+### Chosen Solution
+**Option 2: Pure Typography Dynamic Gradient Roll + Monoline Vector Logo**.
+
+### Reason
+Delivers ultra-clean, unboxed typography animation while maintaining 100% layout stability across screen sizes and introducing the crisp new SVG monogram mark.
+
+### Future Considerations
+- Allow custom domain color themes to be selected during workspace setup.
+
+
+
 
 
 
