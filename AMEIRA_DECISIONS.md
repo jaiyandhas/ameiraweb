@@ -354,6 +354,33 @@ Guarantees that `<CreateBusinessPage>` is NEVER rendered while a query is in fli
 ### Future Considerations
 - Add skeleton placeholder view during initial workspace chunk hydration.
 
+---
+
+## ADR-014: Modular Feature Architecture for Dashboard
+
+### Problem
+Monolithic page components make UI features harder to test, maintain, and reuse. The dashboard originally housed all greetings, activity feed, metrics, quick actions, and setup checklist logic in a single file.
+
+### Options Considered
+1. **Monolithic Page Component**: Keep all sections embedded inside a single 300-line `DashboardPage.tsx` file.
+2. **Modular Feature Sub-Components**: Modularize into `src/features/dashboard/`:
+   - `WelcomeHeader.tsx`
+   - `ActivityFeed.tsx`
+   - `WorkspaceOverview.tsx`
+   - `QuickActions.tsx`
+   - `SetupChecklist.tsx`
+   - `DashboardPage.tsx` as a clean layout assembler.
+
+### Chosen Solution
+**Option 2: Modular Feature Sub-Components**.
+
+### Reason
+Improves code readability, component reusability, and isolates state/render concerns for each section of the Dashboard.
+
+### Future Considerations
+- Allow individual feature modules (like `ActivityFeed`) to be embedded in sub-views (such as Person Detail or Settings).
+
+
 
 
 
