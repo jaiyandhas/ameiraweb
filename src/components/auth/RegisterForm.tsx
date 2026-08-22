@@ -3,7 +3,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Checkbox } from '../ui/Checkbox';
 import { Alert } from '../ui/Alert';
-import { Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface RegisterFormProps {
@@ -24,6 +24,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
+  const [successInfo, setSuccessInfo] = useState('');
   const [errors, setErrors] = useState<{ 
     fullName?: string; 
     contact?: string; 
@@ -35,6 +36,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalError('');
+    setSuccessInfo('');
     const newErrors: typeof errors = {};
 
     if (!fullName.trim()) newErrors.fullName = 'Please enter your full name';
@@ -64,13 +66,31 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       });
 
       if (error) {
-        setGlobalError(error.message || 'Failed to create account. Please try again.');
+        if (error.message.includes('security purposes') || error.status === 429) {
+          setGlobalError('Rate limit: Supabase security prevents rapid repeat sign-ups. If you already registered, please sign in below.');
+        } else {
+          setGlobalError(error.message || 'Failed to create account. Please try again.');
+        }
         setIsLoading(false);
         return;
       }
 
       if (data.user) {
-        onSuccess(fullName.trim(), contact.trim());
+        if (data.session) {
+          onSuccess(fullName.trim(), contact.trim());
+        } else {
+          // Attempt instant sign in
+          const { data: signInData } = await supabase.auth.signInWithPassword({
+            email: contact.trim(),
+            password: password,
+          });
+
+          if (signInData?.session) {
+            onSuccess(fullName.trim(), contact.trim());
+          } else {
+            setSuccessInfo('Account created! Please check your email to confirm your account, or sign in.');
+          }
+        }
       }
     } catch (err: any) {
       setGlobalError(err?.message || 'An unexpected error occurred during account creation.');
@@ -82,6 +102,23 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {globalError && <Alert type="error" message={globalError} />}
+      
+      {successInfo && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            <span>Registration Received</span>
+          </div>
+          <p className="text-xs leading-relaxed text-emerald-800">{successInfo}</p>
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="mt-2 text-xs font-bold text-emerald-900 underline hover:text-emerald-950 text-left"
+          >
+            Click here to Sign In &rarr;
+          </button>
+        </div>
+      )}
 
       <Input
         label="Your Full Name"
